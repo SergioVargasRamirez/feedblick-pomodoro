@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# Mandatory pre-push gate -- typecheck + bun test + lint. Deliberately not the three heavier
+# layers (test:functions/test:db/test:e2e): those need the local Supabase stack running, take
+# real time, and are documented as a run-yourself-before-pushing discipline
+# (docs/claude/testing.md), not something a hook should force on every push. This hook exists
+# because that discipline had zero enforcement of any kind before -- see
+# docs/testing-infrastructure-todo.md item 6.
+#
+# lint added 2026-08-21, after CI failed on prettier/prettier formatting errors this hook let
+# through unnoticed -- a recurring problem, per direct user report ("we have had this same
+# problem several times now"). lint needs no external services, runs in a couple of seconds, and
+# CI runs it as its own gate before build (.github/workflows/test.yml) -- there was never a real
+# reason to leave it out of the same "fast, always-available" tier typecheck/bun test already
+# sit in; its absence here was an oversight, not a considered exclusion like the three heavier
+# layers above.
+#
+# Not installed automatically -- see docs/claude/testing.md for the one-time
+# `git config core.hooksPath .githooks` setup step.
+
+set -e
+
+echo "pre-push: running typecheck..."
+bun run typecheck
+
+echo "pre-push: running bun test..."
+bun test
+
+echo "pre-push: running lint..."
+bun run lint
+
+echo "pre-push: ok"

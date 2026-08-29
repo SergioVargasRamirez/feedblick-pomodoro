@@ -1,0 +1,24 @@
+{
+  "extends": "./tsconfig.json",
+  "include": [
+    "src/**/*.test.ts",
+    "src/**/*.test.tsx",
+    "test/**/*.ts",
+    "e2e/**/*.ts",
+    "playwright.config.ts",
+    // TanStack Router's createFileRoute infers its exact-path type from module augmentation
+    // this generated file provides — an "include" array replaces rather than extends the base
+    // config's, so it has to be re-listed here or every route file fails to type-check standalone.
+    "src/routeTree.gen.ts"
+  ],
+  "exclude": [],
+  "compilerOptions": {
+    // Deliberately does NOT include "bun" here — @types/bun is not installed at all (see
+    // test/bun-test-types.d.ts for why: it makes the bare "bun" specifier resolvable, which a
+    // dormant import inside a nitro dependency then resolves for real, leaking a global `fetch`
+    // augmentation into whichever tsconfig program reaches it — including this one, since both
+    // programs share one node_modules). `bun:test`'s types come from the hand-rolled shim in
+    // test/bun-test-types.d.ts instead, picked up because it's a *.ts file under this "include".
+    "types": ["vite/client"]
+  }
+}

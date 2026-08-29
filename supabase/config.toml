@@ -1,0 +1,38 @@
+# Local project identifier — also the default target for Supabase CLI commands and the
+# name given to the local Docker stack by `supabase start`. Not a real cloud project ref.
+project_id = "feedblick-pomodoro-local"
+
+# ---------------------------------------------------------------------------
+# Non-default local ports. Two sibling repos already claim ports on this machine:
+#   ../feedblick-edu   — CLI defaults (54321 api / 54322 db / 54320 shadow / 54323 studio /
+#                         54324 smtp / 54327 analytics), dev server 8080.
+#   ../feedblick-stars — 553xx (55321 api / 55322 db / ...), dev server 8081.
+# A second `supabase start` on already-claimed ports silently ADOPTS the running containers
+# instead of creating its own — confirmed to happen for real between those two repos (see
+# feedblick-stars/CLAUDE.md). Shifting to 563xx keeps all three stacks independent.
+# If a local backend misbehaves, run `docker ps` FIRST and check which project name the
+# supabase_* containers carry.
+# ---------------------------------------------------------------------------
+
+[auth]
+site_url = "http://localhost:8082"
+additional_redirect_urls = ["http://localhost:8082", "http://127.0.0.1:8082"]
+
+[api]
+port = 56321
+
+[db]
+port = 56322
+shadow_port = 56320
+
+[db.pooler]
+port = 56329
+
+[studio]
+port = 56323
+
+[local_smtp]
+port = 56324
+
+[analytics]
+port = 56327
