@@ -82,7 +82,7 @@ carry before assuming a code problem.
   against the OLD row for DELETE events, but with the default replica identity (primary key
   only), that OLD row only ever contains `id` in a DELETE's payload — never `room_id` — so the
   filter can never match and the delete event is silently dropped before reaching any client.
-  INSERT/UPDATE are unaffected (their payload always carries the full NEW row). This is *the*
+  INSERT/UPDATE are unaffected (their payload always carries the full NEW row). This is _the_
   gotcha to remember if a future table's deletes ever seem to not sync live.
 - **Group badges — revised 2026-08-30, no longer teacher-created**: a fixed, always-available
   set of 8 fruit-emoji badges (`src/lib/group-fruits.ts`: pineapple, watermelon, banana, apple,
@@ -102,7 +102,7 @@ carry before assuming a code problem.
   ring meters (count/total-in-room), not a categorical pie — per the dataviz skill, "a ratio
   against a limit" is a meter, and a 2-4 slice donut/pie comparing close values is an
   anti-pattern a stat number or meter reads better than. Fill uses the reserved status color
-  (good=emerald/warning=amber/critical=red); the unfilled track is a lighter step of the *same*
+  (good=emerald/warning=amber/critical=red); the unfilled track is a lighter step of the _same_
   ramp, not neutral gray, so the color still carries meaning across the whole ring. "In room"
   has no natural limit to be a ratio of, so it stays a plain stat number both here and on
   `/display/$code`.
@@ -120,7 +120,7 @@ carry before assuming a code problem.
   button pops `/display/$code` into a separate, named, explicitly-sized browser window
   (`openDisplayWindow` in `rooms.$roomId.tsx`) rather than a new tab — meant to be dragged onto a
   projector while the room panel stays on the teacher's own screen; same `window.open(url, name,
-  "width=...,height=...")` pattern as `feedblick-edu`'s `openLiveDashboard.ts`, which also falls
+"width=...,height=...")` pattern as `feedblick-edu`'s `openLiveDashboard.ts`, which also falls
   back to a toast if the popup is blocked.
 - **Room display** (projector, unauthenticated): `/display/$code` — big countdown, QR, live
   counts (also signal meters now). No `BackgroundGlow` here on purpose (a soft blur competing
@@ -149,5 +149,10 @@ carry before assuming a code problem.
 - Room list has no pagination/archiving.
 - No group-size cap anymore (dropped with `room_badges.seats`) — nothing stops every student
   picking the same fruit.
-- No Playwright/pgTAP coverage yet for any of the above — `e2e/` and
-  `supabase/tests/database/` are still just the scaffold's smoke skeleton.
+- Unit tests exist for the pure logic (`timer.ts`'s `build*` functions, `room-presence.ts`'s
+  `summarize*` functions, `room-code.ts`, and a `RosterTable` behavior test — the last one
+  caught a real sort-direction bug: "desc" used to blindly `.reverse()` the whole array, which
+  put unassigned students FIRST instead of always-last). Still no Playwright/pgTAP coverage for
+  any of the room/timer/signal flow end-to-end — `e2e/` and `supabase/tests/database/` are still
+  just the scaffold's smoke skeleton. `TimerWheel`/`SignalMeter`/`FloatingQrPanel` have no tests
+  at all yet (mostly presentational; `useRoomTimerDisplay`'s hook half is also as-yet untested).

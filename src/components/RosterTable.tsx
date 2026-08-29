@@ -45,14 +45,16 @@ export function RosterTable({
       const groupIndex = GROUP_FRUITS.findIndex((f) => f.id === s.fruit);
       return { ...s, group: groupIndex >= 0 ? GROUP_FRUITS[groupIndex] : null, groupIndex };
     });
-    const sorted = [...withGroup].sort((a, b) => {
-      if (sortBy === "name") return a.name.localeCompare(b.name);
+    const dir = sortDir === "asc" ? 1 : -1;
+    return [...withGroup].sort((a, b) => {
+      if (sortBy === "name") return dir * a.name.localeCompare(b.name);
+      // Unassigned always sorts last — applying `dir` here too (like the name branch does)
+      // would put it first on a "desc" click, which defeats the point of "always."
       if (!a.group && !b.group) return 0;
       if (!a.group) return 1;
       if (!b.group) return -1;
-      return a.group.label.localeCompare(b.group.label);
+      return dir * a.group.label.localeCompare(b.group.label);
     });
-    return sortDir === "asc" ? sorted : sorted.reverse();
   }, [students, sortBy, sortDir]);
 
   if (students.length === 0) {

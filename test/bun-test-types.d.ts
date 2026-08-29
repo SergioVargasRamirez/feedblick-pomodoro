@@ -48,7 +48,12 @@ declare module "bun:test" {
     toBeFalsy(): void;
     toBeCloseTo(expected: number, numDigits?: number): void;
     toBeGreaterThan(expected: number): void;
+    toBeGreaterThanOrEqual(expected: number): void;
     toBeLessThan(expected: number): void;
+    toBeLessThanOrEqual(expected: number): void;
+    toContain(expected: unknown): void;
+    toMatch(expected: string | RegExp): void;
+    toHaveLength(expected: number): void;
     toHaveBeenCalledWith(...args: unknown[]): void;
     toHaveBeenCalledTimes(times: number): void;
     toThrow(expected?: string | RegExp | Error): void;
