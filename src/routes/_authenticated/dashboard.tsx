@@ -2,6 +2,8 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { BrandMark } from "@/components/BrandMark";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { supabase } from "@/integrations/supabase/client";
 import { generateRoomCode } from "@/lib/room-code";
 import { ROOM_CODE_TTL_MINUTES, type Room } from "@/lib/room";
@@ -77,10 +79,13 @@ function Dashboard() {
       <Toaster />
       <header className="border-b">
         <div className="max-w-3xl mx-auto px-6 py-4 flex items-center justify-between">
-          <span className="font-semibold">Feedblick Pomodoro</span>
-          <Button variant="outline" size="sm" onClick={onSignOut}>
-            Sign out
-          </Button>
+          <BrandMark />
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <Button variant="outline" size="sm" onClick={onSignOut}>
+              Sign out
+            </Button>
+          </div>
         </div>
       </header>
       <main className="max-w-3xl mx-auto px-6 py-10 space-y-6">

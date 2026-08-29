@@ -1,11 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { TimerWheel } from "@/components/TimerWheel";
+import { BrandMark } from "@/components/BrandMark";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { cn } from "@/lib/utils";
+import { badgeColor } from "@/lib/badge-colors";
 import { useRoomByCode, useRoomBadges, useRoomTasks } from "@/hooks/use-room";
 import {
   useRoomPresenceChannel,
@@ -37,6 +39,21 @@ const SIGNALS: { kind: SignalKind; label: string }[] = [
   { kind: "stuck", label: "Stuck" },
   { kind: "need2min", label: "Need 2 min" },
 ];
+
+const SIGNAL_STYLES: Record<SignalKind, { idle: string; active: string }> = {
+  done: {
+    idle: "border-emerald-500/40 text-emerald-700 dark:text-emerald-400",
+    active: "border-emerald-500 bg-emerald-500 text-white",
+  },
+  stuck: {
+    idle: "border-red-500/40 text-red-700 dark:text-red-400",
+    active: "border-red-500 bg-red-500 text-white",
+  },
+  need2min: {
+    idle: "border-amber-500/40 text-amber-700 dark:text-amber-400",
+    active: "border-amber-500 bg-amber-500 text-white",
+  },
+};
 
 // A student's own typed name is debounced before it's broadcast (and before they show up in
 // the shared list at all) so the room isn't re-tracking presence on every keystroke.
@@ -131,6 +148,11 @@ function SessionView() {
 
   return (
     <div className="min-h-screen bg-background px-4 py-6 space-y-6 max-w-3xl mx-auto">
+      <div className="flex items-center justify-between">
+        <BrandMark />
+        <ThemeToggle />
+      </div>
+
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardContent className="flex items-center justify-center pt-6">
@@ -150,18 +172,19 @@ function SessionView() {
             {tasks.length === 0 ? (
               <p className="text-sm text-muted-foreground">No tasks yet.</p>
             ) : (
-              <ol className="space-y-2">
+              <ol className="space-y-3">
                 {tasks.map((t, i) => (
-                  <li key={t.id} className="flex items-center gap-2">
+                  <li key={t.id} className="flex items-center gap-3">
                     <Checkbox
                       checked={checked.has(t.id)}
                       onCheckedChange={() => toggleTask(t.id)}
                       id={`task-${t.id}`}
+                      className="size-5"
                     />
                     <label
                       htmlFor={`task-${t.id}`}
                       className={cn(
-                        "text-sm",
+                        "text-lg",
                         checked.has(t.id) && "line-through text-muted-foreground",
                       )}
                     >
@@ -179,13 +202,16 @@ function SessionView() {
         <p className="text-sm font-medium mb-2">How's it going?</p>
         <div className="grid grid-cols-3 gap-2">
           {SIGNALS.map(({ kind, label }) => (
-            <Button
+            <button
               key={kind}
-              variant={self.signal === kind ? "default" : "outline"}
               onClick={() => toggleSignal(kind)}
+              className={cn(
+                "rounded-full border px-4 py-2.5 text-sm font-medium transition-colors",
+                self.signal === kind ? SIGNAL_STYLES[kind].active : SIGNAL_STYLES[kind].idle,
+              )}
             >
               {label}
-            </Button>
+            </button>
           ))}
         </div>
       </div>
@@ -200,22 +226,23 @@ function SessionView() {
         />
         {badges.length > 0 && (
           <div className="flex flex-wrap gap-2 pt-1">
-            {badges.map((b) => {
+            {badges.map((b, i) => {
               const occupied = byBadge[b.id]?.total ?? 0;
               const isSelf = self.badgeId === b.id;
               const isFull = !isSelf && occupied >= b.seats;
+              const color = badgeColor(i);
               return (
                 <button
                   key={b.id}
                   disabled={isFull}
                   onClick={() => toggleBadge(b.id)}
                   className={cn(
-                    "rounded-md border px-3 py-1.5 text-sm",
-                    isSelf
-                      ? "border-primary bg-primary/10 font-medium"
-                      : isFull
-                        ? "text-muted-foreground/50 cursor-not-allowed"
-                        : "text-muted-foreground",
+                    "rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors",
+                    isFull
+                      ? "border-muted text-muted-foreground/50 cursor-not-allowed"
+                      : isSelf
+                        ? color.active
+                        : color.idle,
                   )}
                 >
                   {b.name}
@@ -235,14 +262,23 @@ function SessionView() {
           <p className="text-sm text-muted-foreground">No one else here yet.</p>
         ) : (
           <ul className="text-sm divide-y">
-            {students.map((s) => (
-              <li key={s.presenceKey} className="flex items-center justify-between py-1.5">
-                <span>{s.name}</span>
-                <span className="text-muted-foreground">
-                  {s.badgeId ? (badges.find((b) => b.id === s.badgeId)?.name ?? "") : "—"}
-                </span>
-              </li>
-            ))}
+            {students.map((s) => {
+              const badgeIndex = badges.findIndex((b) => b.id === s.badgeId);
+              const badge = badgeIndex >= 0 ? badges[badgeIndex] : null;
+              return (
+                <li key={s.presenceKey} className="flex items-center justify-between py-1.5">
+                  <span>{s.name}</span>
+                  {badge ? (
+                    <span className="flex items-center gap-1.5 text-muted-foreground">
+                      <span className={cn("size-2 rounded-full", badgeColor(badgeIndex).dot)} />
+                      {badge.name}
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground">—</span>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>

@@ -9,7 +9,10 @@ import { ArrowLeft, Copy, Check, Plus, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { QrCard } from "@/components/QrCard";
 import { TimerWheel } from "@/components/TimerWheel";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { sessionUrl, type Room } from "@/lib/room";
+import { badgeColor } from "@/lib/badge-colors";
+import { cn } from "@/lib/utils";
 import { useRoom, useRoomBadges, useRoomTasks } from "@/hooks/use-room";
 import {
   useRoomPresenceChannel,
@@ -154,6 +157,7 @@ function RoomControl() {
             ) : (
               <span className="text-xs text-muted-foreground">Ended</span>
             )}
+            <ThemeToggle />
           </div>
         </div>
       </header>
@@ -196,9 +200,10 @@ function RoomControl() {
               </div>
               {drillSignal && (
                 <div className="border-t pt-3 space-y-1 text-sm">
-                  {badges.map((b) => (
+                  {badges.map((b, i) => (
                     <div key={b.id} className="flex justify-between">
-                      <span className="text-muted-foreground">
+                      <span className="flex items-center gap-1.5 text-muted-foreground">
+                        <span className={cn("size-2 rounded-full", badgeColor(i).dot)} />
                         {b.name}
                         {b.place ? ` · ${b.place}` : ""}
                       </span>
@@ -320,9 +325,10 @@ function RoomControl() {
                 </Button>
               </div>
               <ul className="space-y-1">
-                {badges.map((b) => (
+                {badges.map((b, i) => (
                   <li key={b.id} className="flex items-center justify-between gap-2 text-sm">
-                    <span>
+                    <span className="flex items-center gap-1.5">
+                      <span className={cn("size-2 shrink-0 rounded-full", badgeColor(i).dot)} />
                       {b.name}
                       {b.place ? ` · ${b.place}` : ""} · {b.seats} seats
                       {" — "}

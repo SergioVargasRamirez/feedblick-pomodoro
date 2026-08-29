@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { BrandMark } from "@/components/BrandMark";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -16,7 +17,7 @@ function Home() {
     <div className="min-h-screen bg-background">
       <header className="border-b">
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
-          <span className="font-semibold">Feedblick Pomodoro</span>
+          <BrandMark />
           <div className="flex items-center gap-2">
             <ThemeToggle />
             <Link to="/auth">
