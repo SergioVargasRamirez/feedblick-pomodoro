@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Copy, Check, Plus, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { QrCard } from "@/components/QrCard";
 import { joinUrl, type Room } from "@/lib/room";
@@ -169,6 +169,7 @@ function RoomControl() {
                   : "Code expired — students can no longer join."
                 : "Room ended."
             }
+            actions={<CopyLinkButton url={joinUrl(room.code)} />}
           />
 
           <Card>
@@ -338,6 +339,25 @@ function RoomControl() {
           </Card>
         </div>
       </main>
+    </div>
+  );
+}
+
+function CopyLinkButton({ url }: { url: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const onCopy = async () => {
+    await navigator.clipboard.writeText(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+
+  return (
+    <div className="flex items-center gap-2 w-full">
+      <Input readOnly value={url} className="text-xs" onFocus={(e) => e.currentTarget.select()} />
+      <Button type="button" variant="outline" size="sm" onClick={onCopy}>
+        {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
+      </Button>
     </div>
   );
 }
