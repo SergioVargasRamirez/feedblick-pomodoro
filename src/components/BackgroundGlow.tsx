@@ -1,23 +1,17 @@
-import { cn } from "@/lib/utils";
-
-// A subtle brand-red "mist" behind a page's header/hero — the same purely decorative pattern
-// feedblick-stars' homepage uses (a blurred, semi-transparent circle in the primary color) to
-// keep a plain white light-mode background from reading as stark. Purely visual: aria-hidden,
-// absolutely positioned (the parent needs `relative`), excluded from layout entirely.
+// A subtle brand-red "mist" behind a page's content — softens light mode's stark white
+// background, fading from a light tomato tint at the top down to nothing. Purely decorative:
+// aria-hidden, absolutely positioned, zero layout impact.
 //
-// `center`: for a single vertically-centered card (the auth pages) the mist should sit behind
-// the card wherever it lands, not pinned to the top of the viewport — the default (top-anchored)
-// is right for a page with real content below a header/hero instead.
-export function BackgroundGlow({ center = false }: { center?: boolean }) {
+// A plain top-to-bottom gradient rather than the earlier blurred-circle version (which only
+// reliably showed up on some pages, not others, depending on exactly where in the page it was
+// nested) — `inset-0` on this component's own immediate parent guarantees it always spans that
+// parent's full height, so it's placed as the very first child of each page's outermost
+// `min-h-screen` wrapper (which must have `relative`), not nested inside a `<main>` further in.
+export function BackgroundGlow() {
   return (
     <div
       aria-hidden="true"
-      className={cn(
-        "pointer-events-none absolute -z-10 flex justify-center overflow-hidden",
-        center ? "inset-0 items-center" : "inset-x-0 top-0",
-      )}
-    >
-      <div className="h-72 w-[36rem] rounded-full bg-primary/25 blur-3xl" />
-    </div>
+      className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-primary/15 to-transparent"
+    />
   );
 }

@@ -15,7 +15,8 @@ export const Route = createFileRoute("/")({
 // establish the app shell and the teacher sign-in entry point.
 function Home() {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="relative min-h-screen bg-background">
+      <BackgroundGlow />
       <header className="border-b">
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
           <BrandMark />
@@ -29,8 +30,7 @@ function Home() {
           </div>
         </div>
       </header>
-      <main className="max-w-5xl mx-auto px-6 py-20 relative isolate text-center">
-        <BackgroundGlow />
+      <main className="max-w-5xl mx-auto px-6 py-20 text-center">
         <h1 className="text-4xl font-bold tracking-tight">Feedblick Pomodoro</h1>
         <p className="mt-4 text-lg text-muted-foreground">
           A shared pomodoro timer, task list, and anonymous group signals for students working in

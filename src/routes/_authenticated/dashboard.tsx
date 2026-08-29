@@ -76,7 +76,8 @@ function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="relative min-h-screen bg-background">
+      <BackgroundGlow />
       <Toaster />
       <header className="border-b">
         <div className="max-w-3xl mx-auto px-6 py-4 flex items-center justify-between">
@@ -89,8 +90,7 @@ function Dashboard() {
           </div>
         </div>
       </header>
-      <main className="max-w-3xl mx-auto px-6 py-10 relative isolate space-y-6">
-        <BackgroundGlow />
+      <main className="max-w-3xl mx-auto px-6 py-10 space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-semibold">Your rooms</h1>
           <Button onClick={onCreateRoom} disabled={creating}>

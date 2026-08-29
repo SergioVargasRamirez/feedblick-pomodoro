@@ -140,7 +140,8 @@ function RoomControl() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="relative min-h-screen bg-background">
+      <BackgroundGlow />
       <Toaster />
       <header className="border-b">
         <div className="max-w-5xl mx-auto px-6 py-4 flex flex-wrap items-center justify-between gap-3">
@@ -167,8 +168,7 @@ function RoomControl() {
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-6 py-8 relative isolate space-y-6">
-        <BackgroundGlow />
+      <main className="max-w-5xl mx-auto px-6 py-8 space-y-6">
         <div className="grid gap-6 md:grid-cols-2">
           <QrCard
             url={sessionUrl(room.code)}

@@ -51,7 +51,7 @@ function CheckEmailPage() {
 
   return (
     <div className="relative min-h-screen flex items-center justify-center bg-background px-4">
-      <BackgroundGlow center />
+      <BackgroundGlow />
       <Toaster />
       <div className="w-full max-w-md space-y-6">
         <div className="flex justify-center">
