@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { BrandMark } from "@/components/BrandMark";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
 import { MailCheck } from "lucide-react";
@@ -50,33 +51,38 @@ function CheckEmailPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <Toaster />
-      <Card className="w-full max-w-md">
-        <CardHeader className="items-center text-center">
-          <MailCheck className="size-10 text-primary mb-2" />
-          <CardTitle className="text-2xl">Check your email</CardTitle>
-          <CardDescription>
-            {email
-              ? `We sent a confirmation link to ${email}.`
-              : "Check your inbox for a confirmation link."}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4 text-center">
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full"
-            onClick={onResend}
-            disabled={resending || !email}
-          >
-            {resending ? "Resending…" : "Resend email"}
-          </Button>
-          <p className="text-xs text-muted-foreground pt-2">
-            <Link to="/auth" className="hover:underline">
-              Back to sign in
-            </Link>
-          </p>
-        </CardContent>
-      </Card>
+      <div className="w-full max-w-md space-y-6">
+        <div className="flex justify-center">
+          <BrandMark />
+        </div>
+        <Card>
+          <CardHeader className="items-center text-center">
+            <MailCheck className="size-10 text-primary mb-2" />
+            <CardTitle className="text-2xl">Check your email</CardTitle>
+            <CardDescription>
+              {email
+                ? `We sent a confirmation link to ${email}.`
+                : "Check your inbox for a confirmation link."}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4 text-center">
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={onResend}
+              disabled={resending || !email}
+            >
+              {resending ? "Resending…" : "Resend email"}
+            </Button>
+            <p className="text-xs text-muted-foreground pt-2">
+              <Link to="/auth" className="hover:underline">
+                Back to sign in
+              </Link>
+            </p>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

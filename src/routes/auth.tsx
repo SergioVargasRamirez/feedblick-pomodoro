@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { BrandMark } from "@/components/BrandMark";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -71,7 +72,10 @@ function AuthPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <Toaster />
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-md space-y-6">
+        <div className="flex justify-center">
+          <BrandMark />
+        </div>
         <Card>
           <CardHeader>
             <CardTitle className="text-2xl">Teacher sign in</CardTitle>

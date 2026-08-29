@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { BrandMark } from "@/components/BrandMark";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -60,58 +61,63 @@ function ResetPasswordPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <Toaster />
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle className="text-2xl">Reset password</CardTitle>
-          <CardDescription>
-            {linkError
-              ? "This reset link is no longer valid."
-              : ready
-                ? "Choose a new password."
-                : "Waiting for the reset link to be verified…"}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {linkError ? (
-            <p className="text-sm text-muted-foreground">
-              Request a new reset link from the sign-in page.
+      <div className="w-full max-w-md space-y-6">
+        <div className="flex justify-center">
+          <BrandMark />
+        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-2xl">Reset password</CardTitle>
+            <CardDescription>
+              {linkError
+                ? "This reset link is no longer valid."
+                : ready
+                  ? "Choose a new password."
+                  : "Waiting for the reset link to be verified…"}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {linkError ? (
+              <p className="text-sm text-muted-foreground">
+                Request a new reset link from the sign-in page.
+              </p>
+            ) : (
+              <form onSubmit={onSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label>New password</Label>
+                  <Input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    minLength={6}
+                    disabled={!ready}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Confirm password</Label>
+                  <Input
+                    type="password"
+                    value={confirm}
+                    onChange={(e) => setConfirm(e.target.value)}
+                    required
+                    minLength={6}
+                    disabled={!ready}
+                  />
+                </div>
+                <Button type="submit" disabled={loading || !ready} className="w-full">
+                  {loading ? "Updating…" : "Update password"}
+                </Button>
+              </form>
+            )}
+            <p className="text-xs text-muted-foreground mt-6 text-center">
+              <Link to="/auth" className="hover:underline">
+                Back to sign in
+              </Link>
             </p>
-          ) : (
-            <form onSubmit={onSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label>New password</Label>
-                <Input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  minLength={6}
-                  disabled={!ready}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Confirm password</Label>
-                <Input
-                  type="password"
-                  value={confirm}
-                  onChange={(e) => setConfirm(e.target.value)}
-                  required
-                  minLength={6}
-                  disabled={!ready}
-                />
-              </div>
-              <Button type="submit" disabled={loading || !ready} className="w-full">
-                {loading ? "Updating…" : "Update password"}
-              </Button>
-            </form>
-          )}
-          <p className="text-xs text-muted-foreground mt-6 text-center">
-            <Link to="/auth" className="hover:underline">
-              Back to sign in
-            </Link>
-          </p>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

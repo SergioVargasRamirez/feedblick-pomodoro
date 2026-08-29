@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Card, CardContent } from "@/components/ui/card";
 import { QrCard } from "@/components/QrCard";
+import { BrandMark } from "@/components/BrandMark";
 import { sessionUrl } from "@/lib/room";
 import { useRoomByCode } from "@/hooks/use-room";
 import { useRoomPresenceChannel, summarizeSignals } from "@/lib/room-presence";
@@ -48,7 +49,11 @@ function RoomDisplay() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-10 px-6 py-10">
+    <div className="relative min-h-screen bg-background flex flex-col items-center justify-center gap-10 px-6 py-10">
+      <div className="absolute top-6 left-6">
+        <BrandMark />
+      </div>
+
       <div className="text-center space-y-2">
         <p className="text-6xl md:text-8xl font-bold tabular-nums">
           {formatRemaining(timer.remainingSeconds)}

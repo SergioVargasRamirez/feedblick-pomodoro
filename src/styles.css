@@ -2,6 +2,12 @@
 @source "../src";
 @import "tw-animate-css";
 
+/* Self-hosted via @fontsource, not Google Fonts' own CDN — matches feedblick-stars' choice for
+ * the same font (see its styles.css), rather than picking a different way to load it here.
+ * Only the Latin-700 (bold) subset — the only weight BrandMark.tsx uses.
+ */
+@import "@fontsource/caveat/latin-700.css";
+
 @custom-variant dark (&:is(.dark *));
 
 /*
@@ -19,6 +25,7 @@
  */
 
 @theme inline {
+  --font-script: "Caveat", cursive;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);

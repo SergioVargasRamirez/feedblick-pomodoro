@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { QrCard } from "@/components/QrCard";
 import { TimerWheel } from "@/components/TimerWheel";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { BrandMark } from "@/components/BrandMark";
 import { sessionUrl, type Room } from "@/lib/room";
 import { badgeColor } from "@/lib/badge-colors";
 import { cn } from "@/lib/utils";
@@ -141,13 +142,16 @@ function RoomControl() {
     <div className="min-h-screen bg-background">
       <Toaster />
       <header className="border-b">
-        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Link
-            to="/dashboard"
-            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-          >
-            <ArrowLeft className="size-4" /> Dashboard
-          </Link>
+        <div className="max-w-5xl mx-auto px-6 py-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-4">
+            <BrandMark />
+            <Link
+              to="/dashboard"
+              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+            >
+              <ArrowLeft className="size-4" /> Dashboard
+            </Link>
+          </div>
           <div className="flex items-center gap-3">
             <span className="font-mono text-lg tracking-widest">{room.code}</span>
             {room.status === "active" ? (

@@ -5,6 +5,7 @@
     "": {
       "name": "feedblick-pomodoro",
       "dependencies": {
+        "@fontsource/caveat": "^5.3.0",
         "@hookform/resolvers": "^5.2.2",
         "@radix-ui/react-accordion": "^1.2.12",
         "@radix-ui/react-alert-dialog": "^1.1.15",
@@ -166,6 +167,8 @@
     "@floating-ui/react-dom": ["@floating-ui/react-dom@2.1.9", "", { "dependencies": { "@floating-ui/dom": "^1.8.0" }, "peerDependencies": { "react": ">=16.8.0", "react-dom": ">=16.8.0" } }, "sha512-JDjEFGCpImxDCA7JJKviA0M9+RtmJdj0m/NVU5IMgBK+AmZouAQQ7/+2GLH0GXXY0YMw9oXPB8hKdbPYg5QLYg=="],
 
     "@floating-ui/utils": ["@floating-ui/utils@0.2.12", "", {}, "sha512-HpCo8tmWzLVad5s2d19EhAz5zqrrQ6s69qd6moPMQvkOuSwDT1YgRfWSVuc4ennqrgv3OHppiOGMQ7oC13yIww=="],
+
+    "@fontsource/caveat": ["@fontsource/caveat@5.3.0", "", {}, "sha512-eHTfzQxFSW9ABERRLNruHoNJmKed2J7pqTUc5lp4a4POMgXGKpxmWj3d9Hz10kmAg6iuTTLe6UagbA4bnsmfQw=="],
 
     "@happy-dom/global-registrator": ["@happy-dom/global-registrator@20.11.13", "", { "dependencies": { "@types/node": ">=20.0.0", "happy-dom": "^20.11.13" } }, "sha512-dHTOLIsRA/slelaMoeiAaN0jwpFgz6IjDe4Mmooq8f4AORczgU3V3Gi/VcVyWVJ+NEQbLe5tV/oWvXD+fc+zkQ=="],
 

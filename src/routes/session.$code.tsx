@@ -1,11 +1,20 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableHead,
+  TableRow,
+  TableCell,
+} from "@/components/ui/table";
 import { TimerWheel } from "@/components/TimerWheel";
 import { BrandMark } from "@/components/BrandMark";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { ChevronUp, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { badgeColor } from "@/lib/badge-colors";
 import { useRoomByCode, useRoomBadges, useRoomTasks } from "@/hooks/use-room";
@@ -80,6 +89,8 @@ function SessionView() {
     badgeId: null,
     signal: null,
   });
+  const [sortBy, setSortBy] = useState<"name" | "group">("name");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
   // A returning student (same tab, reloaded) keeps whatever they typed before.
   useEffect(() => {
@@ -127,6 +138,31 @@ function SessionView() {
     students,
     badges.map((b) => b.id),
   );
+
+  const toggleSort = (field: "name" | "group") => {
+    if (sortBy === field) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else {
+      setSortBy(field);
+      setSortDir("asc");
+    }
+  };
+
+  // Unassigned students always sort to the end, regardless of direction — "no group yet" isn't
+  // meaningfully before or after any actual group name.
+  const roster = useMemo(() => {
+    const withGroup = students.map((s) => {
+      const groupIndex = badges.findIndex((b) => b.id === s.badgeId);
+      return { ...s, group: groupIndex >= 0 ? badges[groupIndex] : null, groupIndex };
+    });
+    const sorted = [...withGroup].sort((a, b) => {
+      if (sortBy === "name") return a.name.localeCompare(b.name);
+      if (!a.group && !b.group) return 0;
+      if (!a.group) return 1;
+      if (!b.group) return -1;
+      return a.group.name.localeCompare(b.group.name);
+    });
+    return sortDir === "asc" ? sorted : sorted.reverse();
+  }, [students, badges, sortBy, sortDir]);
 
   if (loading) {
     return (
@@ -261,27 +297,82 @@ function SessionView() {
         {students.length === 0 ? (
           <p className="text-sm text-muted-foreground">No one else here yet.</p>
         ) : (
-          <ul className="text-sm divide-y">
-            {students.map((s) => {
-              const badgeIndex = badges.findIndex((b) => b.id === s.badgeId);
-              const badge = badgeIndex >= 0 ? badges[badgeIndex] : null;
-              return (
-                <li key={s.presenceKey} className="flex items-center justify-between py-1.5">
-                  <span>{s.name}</span>
-                  {badge ? (
-                    <span className="flex items-center gap-1.5 text-muted-foreground">
-                      <span className={cn("size-2 rounded-full", badgeColor(badgeIndex).dot)} />
-                      {badge.name}
-                    </span>
-                  ) : (
-                    <span className="text-muted-foreground">—</span>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>
+                  <SortButton
+                    field="name"
+                    label="Name"
+                    sortBy={sortBy}
+                    sortDir={sortDir}
+                    onSort={toggleSort}
+                  />
+                </TableHead>
+                <TableHead>
+                  <SortButton
+                    field="group"
+                    label="Group"
+                    sortBy={sortBy}
+                    sortDir={sortDir}
+                    onSort={toggleSort}
+                  />
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {roster.map((s) => (
+                <TableRow key={s.presenceKey}>
+                  <TableCell>{s.name}</TableCell>
+                  <TableCell>
+                    {s.group ? (
+                      <span
+                        className={cn(
+                          "inline-flex rounded-full border px-2.5 py-0.5 text-xs font-medium",
+                          badgeColor(s.groupIndex).idle,
+                        )}
+                      >
+                        {s.group.name}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         )}
       </div>
     </div>
+  );
+}
+
+function SortButton({
+  field,
+  label,
+  sortBy,
+  sortDir,
+  onSort,
+}: {
+  field: "name" | "group";
+  label: string;
+  sortBy: "name" | "group";
+  sortDir: "asc" | "desc";
+  onSort: (field: "name" | "group") => void;
+}) {
+  const active = sortBy === field;
+  const Icon = sortDir === "asc" ? ChevronUp : ChevronDown;
+  return (
+    <button
+      onClick={() => onSort(field)}
+      className={cn(
+        "flex items-center gap-1 font-medium",
+        active ? "text-foreground" : "text-muted-foreground",
+      )}
+    >
+      {label}
+      {active && <Icon className="size-3.5" />}
+    </button>
   );
 }
