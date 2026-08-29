@@ -58,6 +58,33 @@ carry before assuming a code problem.
 - `git config core.hooksPath .githooks` — one-time setup for the pre-push gate (typecheck + bun
   test + lint)
 
+## Testing discipline — MANDATORY
+
+Every piece of non-trivial logic (a state transition, a calculation, sorting/filtering,
+aggregation, anything with a branch or an edge case) gets a `bun:test` unit test in the SAME
+change that introduces it — not "later," not "if there's time." This was asked for explicitly
+after two separate audits caught real bugs (`RosterTable`'s sort direction, and untested gaps
+in `phaseLabel`/the tomato color math) that shipped without coverage first.
+
+- A component that's purely presentational (renders props, no branching or derived values) does
+  not need a test of its own.
+- The moment a component computes something — a sort order, a color, a fraction, a formatted
+  string, a "should this fire" decision — extract that computation into an exported pure
+  function and test the function, not the rendered output. Same pattern already used
+  throughout: `countdown.ts`'s `formatRemaining`, `timer.ts`'s `build*`/`shouldAutoAdvance`/
+  `nextAutoAdvancePatch`/`phaseLabel`, `TomatoProgress`'s (superseded by `PhaseIcon`) color math,
+  `room-code.ts`, `room-presence.ts`'s `summarize*`.
+- A few things genuinely need a rendered-component test instead (interaction behavior like
+  "clicking this header sorts the table") — `RosterTable.test.tsx` is the existing example;
+  reach for `@testing-library/react` the same way, and read `test/setup.ts`'s comments first
+  (it documents a real footgun: never import `screen` from `@testing-library/dom` or `/react` in
+  this project — use the queries `render()` itself returns).
+- Before calling a task done, actually run `bun test` and check the new logic has coverage —
+  don't assume it does because "it's similar to something already tested."
+- `test/bun-test-types.d.ts` is a deliberately hand-rolled, minimal `bun:test` type surface (see
+  its own comment for why it isn't `@types/bun`) — extend it with whatever matcher a new test
+  needs; that's expected maintenance, not a sign something's wrong.
+
 ## What exists
 
 - App shell: root route/theme bootstrap, home page, teacher auth (sign in/up, check-email,

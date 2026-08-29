@@ -6,6 +6,7 @@ import {
   buildStartBreak,
   buildStartFocus,
   clampMinutes,
+  completedPomodoros,
   MAX_MINUTES,
   MIN_MINUTES,
   nextAutoAdvancePatch,
@@ -217,5 +218,20 @@ describe("phaseLabel", () => {
     // useRoomTimerDisplay never actually produces this combination, but phaseLabel's own
     // idle-first check means it can't matter if some future caller passes it anyway.
     expect(phaseLabel({ phase: "idle", isPaused: true })).toBe("Ready");
+  });
+});
+
+describe("completedPomodoros", () => {
+  test("a fresh room (round 1, nothing finished yet) shows zero", () => {
+    expect(completedPomodoros(1)).toBe(0);
+  });
+
+  test("round is always one ahead of how many pomodoros actually finished", () => {
+    expect(completedPomodoros(2)).toBe(1);
+    expect(completedPomodoros(4)).toBe(3);
+  });
+
+  test("never goes negative, even for an invalid round of 0", () => {
+    expect(completedPomodoros(0)).toBe(0);
   });
 });

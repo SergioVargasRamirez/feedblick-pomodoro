@@ -1,11 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { QrCard } from "@/components/QrCard";
 import { BrandMark } from "@/components/BrandMark";
-import { TomatoProgress } from "@/components/TomatoProgress";
+import { PhaseIcon } from "@/components/PhaseIcon";
 import { sessionUrl } from "@/lib/room";
 import { useRoomByCode } from "@/hooks/use-room";
 import { formatRemaining } from "@/lib/countdown";
-import { phaseLabel, useRoomTimerDisplay } from "@/lib/timer";
+import { useRoomTimerDisplay } from "@/lib/timer";
 
 export const Route = createFileRoute("/display/$code")({
   head: () => ({
@@ -50,18 +50,11 @@ function RoomDisplay() {
         <BrandMark />
       </div>
 
-      <TomatoProgress
-        remainingSeconds={timer.remainingSeconds}
-        totalSeconds={timer.totalSeconds}
-        phase={timer.phase}
-      />
+      <PhaseIcon phase={timer.phase} />
 
-      <div className="text-center space-y-2">
-        <p className="text-6xl md:text-8xl font-bold tabular-nums">
-          {formatRemaining(timer.remainingSeconds)}
-        </p>
-        <p className="text-lg text-muted-foreground">{phaseLabel(timer)}</p>
-      </div>
+      <p className="text-6xl md:text-8xl font-bold tabular-nums">
+        {formatRemaining(timer.remainingSeconds)}
+      </p>
 
       {room.status === "active" && (
         <QrCard

@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import QRCode from "qrcode";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 // Presentational QR rendering, adapted from feedblick-stars' QrCard (itself carried over from
@@ -42,19 +42,17 @@ export function QrCard({
 
   return (
     <Card className={cn("flex flex-col", className)}>
-      <CardContent className="flex-1 pt-6 flex flex-col md:flex-row gap-6 items-center md:items-start justify-center">
-        {dataUrl && (
-          <div className="flex flex-col items-center gap-3 shrink-0">
-            <img src={dataUrl} alt="Room join QR code" className="size-56" />
-            {actions}
-          </div>
+      {title && (
+        <CardHeader>
+          <CardTitle className="text-base">{title}</CardTitle>
+        </CardHeader>
+      )}
+      <CardContent className="flex flex-1 flex-col items-center gap-3">
+        {dataUrl && <img src={dataUrl} alt="Room join QR code" className="size-56" />}
+        {description && (
+          <p className="max-w-xs text-center text-sm text-muted-foreground">{description}</p>
         )}
-        {(title || description) && (
-          <div className="max-w-xs space-y-1 text-center md:text-left">
-            {title && <h3 className="text-lg font-semibold">{title}</h3>}
-            {description && <p className="text-sm text-muted-foreground">{description}</p>}
-          </div>
-        )}
+        {actions}
       </CardContent>
     </Card>
   );

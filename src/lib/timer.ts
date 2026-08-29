@@ -126,6 +126,14 @@ export function nextAutoAdvancePatch(
   return null;
 }
 
+// `timer_round` increments once per completed (or skipped) focus phase, when its break starts
+// (see buildStartBreak) — so it's always one ahead of how many pomodoros have actually finished.
+// Brought back as a visible "Pomodoros" count in the teacher panel's Live Counts box after
+// being dropped from the phase label entirely ("not sure we need the Round 1, 2, etc").
+export function completedPomodoros(timerRound: number): number {
+  return Math.max(0, timerRound - 1);
+}
+
 // No round counter shown anymore ("not sure we need the Round 1, 2, etc") — just which phase,
 // with an emoji, and whether it's paused. Shared by the teacher panel, the student session page,
 // and the projector display so the three can't drift on wording.

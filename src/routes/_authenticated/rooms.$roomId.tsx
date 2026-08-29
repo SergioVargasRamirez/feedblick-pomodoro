@@ -5,11 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, Trash2, AlertTriangle, Minus } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, AlertTriangle, Minus, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { TimerWheel } from "@/components/TimerWheel";
 import { SignalMeter } from "@/components/SignalMeter";
-import { InRoomBadge } from "@/components/InRoomBadge";
+import { CountBadge } from "@/components/CountBadge";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { BrandMark } from "@/components/BrandMark";
 import { BackgroundGlow } from "@/components/BackgroundGlow";
@@ -34,6 +34,7 @@ import {
   buildStartBreak,
   buildStartFocus,
   clampMinutes,
+  completedPomodoros,
   MINUTES_STEP,
   nextAutoAdvancePatch,
   phaseLabel,
@@ -231,19 +232,17 @@ function RoomControl() {
                   label="Focus"
                   minutes={room.focus_minutes}
                   onChange={(m) => updateRoom({ focus_minutes: m })}
-                  action={<Button onClick={onStartFocus}>Start focus</Button>}
                 />
                 <MinutesStepper
                   label="Break"
                   minutes={room.break_minutes}
                   onChange={(m) => updateRoom({ break_minutes: m })}
-                  action={
-                    <Button variant="outline" onClick={onSkipToBreak}>
-                      Skip to break
-                    </Button>
-                  }
                 />
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
+                  <Button onClick={onStartFocus}>Start focus</Button>
+                  <Button variant="outline" onClick={onSkipToBreak}>
+                    Skip to break
+                  </Button>
                   <Button onClick={onPauseResume} disabled={timer.phase === "idle"}>
                     {timer.isRunning ? "Pause" : "Resume"}
                   </Button>
@@ -299,8 +298,12 @@ function RoomControl() {
             <CardTitle className="text-base">Live counts</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="flex flex-wrap items-center gap-4">
-              <InRoomBadge count={signalCounts.total} />
+            <div className="flex flex-wrap items-center justify-center gap-4">
+              <CountBadge
+                icon={<Users className="size-4 text-muted-foreground" />}
+                label="In room"
+                count={signalCounts.total}
+              />
               {(["done", "stuck", "need2min"] as SignalKind[]).map((kind) => (
                 <button
                   key={kind}
@@ -315,6 +318,15 @@ function RoomControl() {
                   />
                 </button>
               ))}
+              <CountBadge
+                icon={
+                  <span className="text-base leading-none" aria-hidden="true">
+                    🍅
+                  </span>
+                }
+                label="Pomodoros"
+                count={completedPomodoros(room.timer_round)}
+              />
             </div>
             {drillSignal && (
               <div className="border-t pt-3 space-y-1 text-sm">
@@ -356,15 +368,13 @@ function MinutesStepper({
   label,
   minutes,
   onChange,
-  action,
 }: {
   label: string;
   minutes: number;
   onChange: (minutes: number) => void;
-  action: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex items-center gap-2">
       <span className="w-12 text-sm text-muted-foreground">{label}</span>
       <Button
         size="icon"
@@ -383,7 +393,6 @@ function MinutesStepper({
       >
         <Plus className="size-3.5" />
       </Button>
-      {action}
     </div>
   );
 }
