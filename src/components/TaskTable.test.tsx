@@ -4,7 +4,15 @@ import { TaskTable } from "./TaskTable";
 import type { RoomTask } from "@/lib/room";
 
 function task(id: string, text: string): RoomTask {
-  return { id, text, room_id: "room-1", position: 0, created_at: "2026-01-01T00:00:00Z" };
+  return {
+    id,
+    text,
+    room_id: "room-1",
+    position: 0,
+    created_at: "2026-01-01T00:00:00Z",
+    claimed_by: null,
+    completed: false,
+  };
 }
 
 describe("TaskTable", () => {

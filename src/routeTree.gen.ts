@@ -12,8 +12,12 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
-import { Route as CheckEmailRouteImport } from './routes/check-email'
+import { Route as ImpressumRouteImport } from './routes/impressum'
+import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as RequestSubmittedRouteImport } from './routes/request-submitted'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as AuthenticatedAccountRouteImport } from './routes/_authenticated/account'
+import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as DisplayCodeRouteImport } from './routes/display.$code'
 import { Route as SessionCodeRouteImport } from './routes/session.$code'
@@ -33,15 +37,35 @@ const AuthRoute = AuthRouteImport.update({
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
-const CheckEmailRoute = CheckEmailRouteImport.update({
-  id: '/check-email',
-  path: '/check-email',
+const ImpressumRoute = ImpressumRouteImport.update({
+  id: '/impressum',
+  path: '/impressum',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RequestSubmittedRoute = RequestSubmittedRouteImport.update({
+  id: '/request-submitted',
+  path: '/request-submitted',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedAccountRoute = AuthenticatedAccountRouteImport.update({
+  id: '/account',
+  path: '/account',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
@@ -68,8 +92,12 @@ const AuthenticatedRoomsRoomIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
-  '/check-email': typeof CheckEmailRoute
+  '/impressum': typeof ImpressumRoute
+  '/privacy': typeof PrivacyRoute
+  '/request-submitted': typeof RequestSubmittedRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/account': typeof AuthenticatedAccountRoute
+  '/admin': typeof AuthenticatedAdminRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/display/$code': typeof DisplayCodeRoute
   '/session/$code': typeof SessionCodeRoute
@@ -78,8 +106,12 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
-  '/check-email': typeof CheckEmailRoute
+  '/impressum': typeof ImpressumRoute
+  '/privacy': typeof PrivacyRoute
+  '/request-submitted': typeof RequestSubmittedRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/account': typeof AuthenticatedAccountRoute
+  '/admin': typeof AuthenticatedAdminRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/display/$code': typeof DisplayCodeRoute
   '/session/$code': typeof SessionCodeRoute
@@ -90,8 +122,12 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
-  '/check-email': typeof CheckEmailRoute
+  '/impressum': typeof ImpressumRoute
+  '/privacy': typeof PrivacyRoute
+  '/request-submitted': typeof RequestSubmittedRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/_authenticated/account': typeof AuthenticatedAccountRoute
+  '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/display/$code': typeof DisplayCodeRoute
   '/session/$code': typeof SessionCodeRoute
@@ -102,8 +138,12 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
-    | '/check-email'
+    | '/impressum'
+    | '/privacy'
+    | '/request-submitted'
     | '/reset-password'
+    | '/account'
+    | '/admin'
     | '/dashboard'
     | '/display/$code'
     | '/session/$code'
@@ -112,8 +152,12 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
-    | '/check-email'
+    | '/impressum'
+    | '/privacy'
+    | '/request-submitted'
     | '/reset-password'
+    | '/account'
+    | '/admin'
     | '/dashboard'
     | '/display/$code'
     | '/session/$code'
@@ -123,8 +167,12 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/auth'
-    | '/check-email'
+    | '/impressum'
+    | '/privacy'
+    | '/request-submitted'
     | '/reset-password'
+    | '/_authenticated/account'
+    | '/_authenticated/admin'
     | '/_authenticated/dashboard'
     | '/display/$code'
     | '/session/$code'
@@ -135,7 +183,9 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
-  CheckEmailRoute: typeof CheckEmailRoute
+  ImpressumRoute: typeof ImpressumRoute
+  PrivacyRoute: typeof PrivacyRoute
+  RequestSubmittedRoute: typeof RequestSubmittedRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   DisplayCodeRoute: typeof DisplayCodeRoute
   SessionCodeRoute: typeof SessionCodeRoute
@@ -164,11 +214,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/check-email': {
-      id: '/check-email'
-      path: '/check-email'
-      fullPath: '/check-email'
-      preLoaderRoute: typeof CheckEmailRouteImport
+    '/impressum': {
+      id: '/impressum'
+      path: '/impressum'
+      fullPath: '/impressum'
+      preLoaderRoute: typeof ImpressumRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/request-submitted': {
+      id: '/request-submitted'
+      path: '/request-submitted'
+      fullPath: '/request-submitted'
+      preLoaderRoute: typeof RequestSubmittedRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reset-password': {
@@ -177,6 +241,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/reset-password'
       preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/account': {
+      id: '/_authenticated/account'
+      path: '/account'
+      fullPath: '/account'
+      preLoaderRoute: typeof AuthenticatedAccountRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin': {
+      id: '/_authenticated/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AuthenticatedAdminRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/dashboard': {
       id: '/_authenticated/dashboard'
@@ -210,11 +288,15 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAccountRoute: typeof AuthenticatedAccountRoute
+  AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedRoomsRoomIdRoute: typeof AuthenticatedRoomsRoomIdRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAccountRoute: AuthenticatedAccountRoute,
+  AuthenticatedAdminRoute: AuthenticatedAdminRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedRoomsRoomIdRoute: AuthenticatedRoomsRoomIdRoute,
 }
@@ -226,7 +308,9 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
-  CheckEmailRoute: CheckEmailRoute,
+  ImpressumRoute: ImpressumRoute,
+  PrivacyRoute: PrivacyRoute,
+  RequestSubmittedRoute: RequestSubmittedRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   DisplayCodeRoute: DisplayCodeRoute,
   SessionCodeRoute: SessionCodeRoute,

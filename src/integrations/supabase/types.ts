@@ -28,8 +28,43 @@ export type Database = {
   };
   public: {
     Tables: {
+      access_requests: {
+        Row: {
+          created_at: string;
+          decided_at: string | null;
+          email: string;
+          id: string;
+          name: string;
+          status: string;
+          team_name: string;
+          user_id: string | null;
+        };
+        Insert: {
+          created_at?: string;
+          decided_at?: string | null;
+          email: string;
+          id?: string;
+          name: string;
+          status?: string;
+          team_name: string;
+          user_id?: string | null;
+        };
+        Update: {
+          created_at?: string;
+          decided_at?: string | null;
+          email?: string;
+          id?: string;
+          name?: string;
+          status?: string;
+          team_name?: string;
+          user_id?: string | null;
+        };
+        Relationships: [];
+      };
       room_tasks: {
         Row: {
+          claimed_by: string | null;
+          completed: boolean;
           created_at: string;
           id: string;
           position: number;
@@ -37,6 +72,8 @@ export type Database = {
           text: string;
         };
         Insert: {
+          claimed_by?: string | null;
+          completed?: boolean;
           created_at?: string;
           id?: string;
           position?: number;
@@ -44,6 +81,8 @@ export type Database = {
           text: string;
         };
         Update: {
+          claimed_by?: string | null;
+          completed?: boolean;
           created_at?: string;
           id?: string;
           position?: number;
@@ -62,11 +101,16 @@ export type Database = {
       };
       rooms: {
         Row: {
+          auto_assign_groups: boolean;
+          auto_restarts_used: number;
           break_minutes: number;
+          claiming_enabled: boolean;
           code: string;
           created_at: string;
+          disabled_fruits: string[];
           focus_minutes: number;
           id: string;
+          max_auto_restarts: number;
           name: string;
           status: string;
           teacher_id: string;
@@ -77,11 +121,16 @@ export type Database = {
           timer_target_at: string | null;
         };
         Insert: {
+          auto_assign_groups?: boolean;
+          auto_restarts_used?: number;
           break_minutes?: number;
+          claiming_enabled?: boolean;
           code: string;
           created_at?: string;
+          disabled_fruits?: string[];
           focus_minutes?: number;
           id?: string;
+          max_auto_restarts?: number;
           name?: string;
           status?: string;
           teacher_id: string;
@@ -92,11 +141,16 @@ export type Database = {
           timer_target_at?: string | null;
         };
         Update: {
+          auto_assign_groups?: boolean;
+          auto_restarts_used?: number;
           break_minutes?: number;
+          claiming_enabled?: boolean;
           code?: string;
           created_at?: string;
+          disabled_fruits?: string[];
           focus_minutes?: number;
           id?: string;
+          max_auto_restarts?: number;
           name?: string;
           status?: string;
           teacher_id?: string;

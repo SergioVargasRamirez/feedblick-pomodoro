@@ -27,3 +27,26 @@ export const GROUP_FRUITS: GroupFruit[] = [
   { id: "lemon", label: "Lemon", emoji: "🍋" },
   { id: "cherry", label: "Cherry", emoji: "🍒" },
 ];
+
+// A host can turn individual groups off to "reduce the number of groups in a session" — stored
+// as the DISABLED set (opt-out, empty by default) so every existing room keeps offering all 8
+// with no migration-time behavior change. Toggling never touches anyone already assigned to a
+// group that gets disabled — only future picks (manual or auto-assign) stop offering it.
+export function toggleDisabledFruit(disabledFruits: string[], fruitId: string): string[] {
+  return disabledFruits.includes(fruitId)
+    ? disabledFruits.filter((id) => id !== fruitId)
+    : [...disabledFruits, fruitId];
+}
+
+// Guards against disabling the last remaining group — re-enabling is always allowed, but turning
+// off the only group still standing would leave nobody able to pick (or be auto-assigned) any
+// group at all.
+export function canToggleFruitEnabled(disabledFruits: string[], fruitId: string): boolean {
+  if (disabledFruits.includes(fruitId)) return true;
+  const enabledCount = GROUP_FRUITS.length - disabledFruits.length;
+  return enabledCount > 1;
+}
+
+export function enabledFruitIds(disabledFruits: string[]): string[] {
+  return GROUP_FRUITS.filter((f) => !disabledFruits.includes(f.id)).map((f) => f.id);
+}

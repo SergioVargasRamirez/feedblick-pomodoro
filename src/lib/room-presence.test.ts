@@ -1,5 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import { summarizeByFruit, summarizeSignals, type StudentPresence } from "./room-presence";
+import {
+  pickAutoAssignFruit,
+  summarizeByFruit,
+  summarizeSignals,
+  type StudentPresence,
+} from "./room-presence";
 
 function student(
   name: string,
@@ -54,5 +59,29 @@ describe("summarizeByFruit", () => {
     const students = [student("A", null, "stuck"), student("B", "unknown-fruit", "stuck")];
     const result = summarizeByFruit(students, ["banana"]);
     expect(result.banana.total).toBe(0);
+  });
+});
+
+describe("pickAutoAssignFruit", () => {
+  test("an empty room picks among all fruits, using rng to choose which", () => {
+    expect(pickAutoAssignFruit([], ["banana", "cherry"], () => 0)).toBe("banana");
+    expect(pickAutoAssignFruit([], ["banana", "cherry"], () => 0.99)).toBe("cherry");
+  });
+
+  test("skips already-populated groups in favor of the least-populated one", () => {
+    const students = [student("A", "banana", null), student("B", "banana", null)];
+    expect(pickAutoAssignFruit(students, ["banana", "cherry"], () => 0)).toBe("cherry");
+  });
+
+  test("ties are broken only among the fruits actually tied for least-populated", () => {
+    const students = [student("A", "banana", null)];
+    // banana has 1, cherry and lime both have 0 — rng picks among [cherry, lime] only.
+    expect(pickAutoAssignFruit(students, ["banana", "cherry", "lime"], () => 0)).toBe("cherry");
+    expect(pickAutoAssignFruit(students, ["banana", "cherry", "lime"], () => 0.99)).toBe("lime");
+  });
+
+  test("defaults to Math.random and still returns a valid fruit id", () => {
+    const result = pickAutoAssignFruit([], ["banana", "cherry"]);
+    expect(["banana", "cherry"]).toContain(result);
   });
 });

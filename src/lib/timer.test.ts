@@ -1,14 +1,19 @@
 import { describe, expect, test } from "bun:test";
 import {
+  buildExtend,
   buildPause,
   buildReset,
   buildResume,
   buildStartBreak,
   buildStartFocus,
+  clampAutoRestarts,
   clampMinutes,
   completedPomodoros,
+  MAX_AUTO_RESTARTS,
   MAX_MINUTES,
+  MIN_AUTO_RESTARTS,
   MIN_MINUTES,
+  nextAutoAdvanceOutcome,
   nextAutoAdvancePatch,
   phaseLabel,
   shouldAutoAdvance,
@@ -140,6 +145,47 @@ describe("buildReset", () => {
   });
 });
 
+describe("buildExtend", () => {
+  test("idle has nothing to extend", () => {
+    expect(buildExtend(IDLE, 120)).toBeNull();
+  });
+
+  test("running: pushes the target out and grows the total duration", () => {
+    const running: RoomTimerRow = {
+      timer_phase: "focus",
+      timer_target_at: new Date(Date.now() + 300_000).toISOString(),
+      timer_remaining_seconds: null,
+      timer_duration_seconds: 1500,
+      timer_round: 1,
+    };
+    const patch = buildExtend(running, 120);
+    expect(patch).not.toBeNull();
+    expect(secondsUntil(patch!.timer_target_at)).toBeCloseTo(300 + 120, 0);
+    expect(patch!.timer_remaining_seconds).toBeNull();
+    expect(patch!.timer_duration_seconds).toBe(1620);
+    expect(patch!.timer_phase).toBe("focus");
+    expect(patch!.timer_round).toBe(1);
+  });
+
+  test("paused: adds straight to the frozen remaining seconds and the total duration", () => {
+    const paused: RoomTimerRow = {
+      timer_phase: "break",
+      timer_target_at: null,
+      timer_remaining_seconds: 60,
+      timer_duration_seconds: 300,
+      timer_round: 2,
+    };
+    const patch = buildExtend(paused, 120);
+    expect(patch).toEqual({
+      timer_phase: "break",
+      timer_target_at: null,
+      timer_remaining_seconds: 180,
+      timer_duration_seconds: 420,
+      timer_round: 2,
+    });
+  });
+});
+
 // Regression coverage for "when a break ends, the timer doesn't reset to a second pomodoro" —
 // every phase change used to be manual-click-only, so a countdown reaching zero on its own did
 // nothing. These two pure functions are what the room panel's auto-advance effect calls.
@@ -194,6 +240,58 @@ describe("nextAutoAdvancePatch", () => {
 
   test("idle has nothing to advance from", () => {
     expect(nextAutoAdvancePatch({ ...IDLE, focus_minutes: 25, break_minutes: 5 })).toBeNull();
+  });
+});
+
+describe("clampAutoRestarts", () => {
+  test("clamps to the [MIN_AUTO_RESTARTS, MAX_AUTO_RESTARTS] range", () => {
+    expect(clampAutoRestarts(0)).toBe(MIN_AUTO_RESTARTS);
+    expect(clampAutoRestarts(999)).toBe(MAX_AUTO_RESTARTS);
+    expect(clampAutoRestarts(3)).toBe(3);
+  });
+});
+
+describe("nextAutoAdvanceOutcome", () => {
+  const running = {
+    ...IDLE,
+    timer_phase: "focus",
+    timer_round: 1,
+    timer_duration_seconds: 1500,
+    focus_minutes: 25,
+    break_minutes: 5,
+    max_auto_restarts: 2,
+    auto_restarts_used: 0,
+  };
+
+  test("idle is a no-op regardless of the cap", () => {
+    expect(nextAutoAdvanceOutcome({ ...running, timer_phase: "idle" })).toEqual({ kind: "none" });
+  });
+
+  test("under the cap: advances and bumps auto_restarts_used", () => {
+    const outcome = nextAutoAdvanceOutcome(running);
+    expect(outcome.kind).toBe("advance");
+    if (outcome.kind === "advance") {
+      expect(outcome.patch.timer_phase).toBe("break");
+      expect(outcome.autoRestartsUsed).toBe(1);
+    }
+  });
+
+  test("at the cap: freezes at zero in the current phase instead of advancing", () => {
+    const outcome = nextAutoAdvanceOutcome({ ...running, auto_restarts_used: 2 });
+    expect(outcome).toEqual({
+      kind: "capped",
+      patch: {
+        timer_phase: "focus",
+        timer_target_at: null,
+        timer_remaining_seconds: 0,
+        timer_duration_seconds: 1500,
+        timer_round: 1,
+      },
+    });
+  });
+
+  test("past the cap (shouldn't happen, but defensive) still freezes rather than advancing", () => {
+    expect(nextAutoAdvanceOutcome({ ...running, auto_restarts_used: 5 }).kind).toBe("capped");
   });
 });
 

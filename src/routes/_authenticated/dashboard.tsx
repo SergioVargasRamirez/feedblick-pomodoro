@@ -1,5 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -13,15 +15,24 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { BrandMark } from "@/components/BrandMark";
 import { BackgroundGlow } from "@/components/BackgroundGlow";
+import { Footer } from "@/components/Footer";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { Trash2 } from "lucide-react";
+import { Trash2, UserRound, ChevronDown, LogOut, ShieldCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { generateRoomCode } from "@/lib/room-code";
 import type { Room } from "@/lib/room";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
+import { checkIsAdmin } from "@/lib/admin.functions";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
@@ -52,6 +63,11 @@ function Dashboard() {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+  const checkAdmin = useServerFn(checkIsAdmin);
+  const { data: adminCheck } = useQuery({
+    queryKey: ["admin", "check"],
+    queryFn: () => checkAdmin({}),
+  });
 
   useEffect(() => {
     supabase
@@ -98,9 +114,33 @@ function Dashboard() {
           <BrandMark />
           <div className="flex items-center gap-2">
             <ThemeToggle />
-            <Button variant="outline" size="sm" onClick={onSignOut}>
-              Sign out
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="gap-1">
+                  <UserRound className="size-4" />
+                  <span className="hidden sm:inline max-w-[12rem] truncate">{user.email}</span>
+                  <ChevronDown className="size-3.5 opacity-60" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {adminCheck?.isAdmin && (
+                  <Link to="/admin">
+                    <DropdownMenuItem className="cursor-pointer">
+                      <ShieldCheck className="size-4" /> Admin
+                    </DropdownMenuItem>
+                  </Link>
+                )}
+                <Link to="/account">
+                  <DropdownMenuItem className="cursor-pointer">
+                    <UserRound className="size-4" /> Account
+                  </DropdownMenuItem>
+                </Link>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className="cursor-pointer" onClick={onSignOut}>
+                  <LogOut className="size-4" /> Sign out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </header>
@@ -117,8 +157,8 @@ function Dashboard() {
         {!loading && rooms.length === 0 && (
           <Card>
             <CardContent className="py-10 text-center text-muted-foreground">
-              No rooms yet. Create one to get a join code for your students — a room stays joinable
-              until you end it, so it's fine to create one well ahead of class.
+              No rooms yet. Create one to get a join code for your team — a room stays joinable
+              until you end it, so it's fine to create one well ahead of time.
             </CardContent>
           </Card>
         )}
@@ -183,6 +223,7 @@ function Dashboard() {
           ))}
         </div>
       </main>
+      <Footer variant="minimal" />
     </div>
   );
 }

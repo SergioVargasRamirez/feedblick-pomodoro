@@ -37,7 +37,7 @@ export function TaskTable({
                 </>
               )}
             </TableCell>
-            <TableCell className="w-10">{renderAction(t, i)}</TableCell>
+            <TableCell className="w-px whitespace-nowrap">{renderAction(t, i)}</TableCell>
           </TableRow>
         ))}
       </TableBody>

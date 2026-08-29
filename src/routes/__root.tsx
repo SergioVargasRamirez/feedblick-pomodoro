@@ -78,7 +78,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         name: "description",
         content:
-          "Shared classroom pomodoro timer, task list, and anonymous group signals for students working in groups.",
+          "A shared pomodoro timer, task list, and anonymous signals for teams working together in a room.",
       },
     ],
     links: [

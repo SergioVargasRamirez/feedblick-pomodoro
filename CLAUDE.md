@@ -20,6 +20,18 @@ either way: group/signal/name state for students lives ONLY in a Supabase Realti
 channel, never in Postgres, so it's discarded automatically when a room ends — no student
 accounts, no cleanup job needed.
 
+**Reframed 2026-08-31 as a product for teams generally, not just classrooms**: the underlying
+mechanism (a room, a shared timer, a to-do list, anonymous signals) works for any small group
+coordinating synchronous work, not only students — "Pomodoro has been traditionally used for
+individuals, this is a pomodoro for teams" (Sergio's own framing). User-facing copy now says
+Host/Participant/team instead of Teacher/Student/classroom/school. This was a **copy-only**
+rename — internal identifiers (`rooms.teacher_id`, the `StudentPresence`/`PresentStudent` types,
+`useRoomPresenceChannel`'s `students` field, code comments throughout) were deliberately left
+alone; renaming them would be pure churn with real migration/RLS risk for zero user-visible
+benefit. Sergio remains the actual primary user (a high-school teacher) — this is a positioning
+change for how the product is described and sold, not a change to who uses it today or how the
+room/timer/signal mechanics work.
+
 One of three products under the Feedblick umbrella (siblings: `../feedblick-edu`,
 `../feedblick-stars`), sharing an architecture but not a repo, Vercel project, or Supabase
 project — see the "Local Supabase stack" section below for why port isolation between them
@@ -72,8 +84,13 @@ in `phaseLabel`/the tomato color math) that shipped without coverage first.
   string, a "should this fire" decision — extract that computation into an exported pure
   function and test the function, not the rendered output. Same pattern already used
   throughout: `countdown.ts`'s `formatRemaining`, `timer.ts`'s `build*`/`shouldAutoAdvance`/
-  `nextAutoAdvancePatch`/`phaseLabel`, `TomatoProgress`'s (superseded by `PhaseIcon`) color math,
-  `room-code.ts`, `room-presence.ts`'s `summarize*`.
+  `nextAutoAdvancePatch`/`phaseLabel`/`transportAction`/`buildExtend`/`nextAutoAdvanceOutcome`/
+  `clampAutoRestarts`, `TomatoProgress`'s
+  (superseded by `PhaseIcon`) color math, `room-code.ts`, `room-presence.ts`'s
+  `summarize*`/`pickAutoAssignFruit`, `admin-emails.ts`'s `isAdminEmail`,
+  `access-request-status.ts`'s `getAccessRequestAcceptanceStatus`, `task-claim.ts`'s
+  `nextClaimedBy`/`canSignalDone`, `group-fruits.ts`'s
+  `toggleDisabledFruit`/`canToggleFruitEnabled`/`enabledFruitIds`.
 - A few things genuinely need a rendered-component test instead (interaction behavior like
   "clicking this header sorts the table") — `RosterTable.test.tsx` is the existing example;
   reach for `@testing-library/react` the same way, and read `test/setup.ts`'s comments first
@@ -209,7 +226,13 @@ in `phaseLabel`/the tomato color math) that shipped without coverage first.
   card shows the raw session URL as its description instead of the room code — nobody at the
   projector needs the code once they can see (or scan) the actual link. No `BackgroundGlow` here
   on purpose (a soft blur competing with a large-print countdown across a room didn't serve the
-  same "landing page" feel the glow was for elsewhere).
+  same "landing page" feel the glow was for elsewhere). "Powered by Feedblick" sits directly
+  under the QR card (2026-09-01, direct request), with a tiny Impressum/Privacy row pinned to
+  the bottom of the page — hand-rolled rather than `<Footer variant="minimal">` specifically to
+  keep this page's own minimal-chrome design intact. Also shows a full-width auto-hiding banner
+  for host broadcast announcements (see the "Host broadcast announcements" entry below) — the one
+  piece of this page that reacts to something happening live, everything else here is static
+  ambient display.
 - **Student** (unauthenticated): `/session/$code` — timer (upper-left) and tasks (upper-right,
   checkboxes now right-aligned — text reads first, then the box), then the three signal buttons,
   then "You" (a name input + the fixed fruit-badge picker), then the roster table. A student
@@ -230,17 +253,219 @@ in `phaseLabel`/the tomato color math) that shipped without coverage first.
   while running and a static `timer_remaining_seconds` while paused. `src/components/
 TimerWheel.tsx` is the shared circular countdown widget (SVG ring draining from full to
   empty), used by both the teacher panel and `/session/$code`.
+- **Landing page, legal footer, and account area** (all 2026-08-31, "the different sizes are not
+  nice" batch's follow-up ask) — `/` was rewritten to match edu/stars' own landing-page shape
+  (hero + 4-feature grid + `Footer`), replacing the placeholder page from scaffolding.
+  `src/components/Footer.tsx`/`src/lib/legal-controller.ts`/`/impressum` are ported near-verbatim
+  from feedblick-edu (Sergio's explicit call: "very likely the legal stuff from edu is the most
+  appropriate") — same real operator details in `CONTROLLER`, same DDG/MStV Impressum sections.
+  `/privacy` is a new page adapted (not copied) from edu's own privacy policy: this app's actual
+  data model is smaller (no video embeds, no donation link, no self-serve signup, and critically
+  no anonymous-response table at all — a participant's name/group/signal is presence-only and
+  never reaches Postgres, unlike edu's own stored, unnamed responses) so the policy describes
+  that, not edu's feature set. Both legal pages state Vercel Frankfurt (eu-central-1) + Supabase
+  EU (AWS eu-central-1) as the intended hosting region, matching edu/stars — this app has no
+  production Supabase/Vercel project yet, so update this if the real deployment ever differs.
+  `/account` (+`DeleteAccountDialog.tsx`, `src/lib/account.functions.ts`) is ported directly from
+  edu's own self-serve account-deletion pattern (`requireSupabaseAuth` + the service-role
+  `client.server.ts`, both already present from scaffolding) — a host's rooms/tasks cascade via
+  the existing `teacher_id` FK, nothing extra to purge. The dashboard header's plain "Sign out"
+  button became a `DropdownMenu` (email + chevron trigger) with Account/Sign out, plus an Admin
+  entry shown only when `checkIsAdmin` returns true.
+- **Request access, single-admin approval** (2026-08-31) — self-serve sign-up is gone from
+  `/auth` (the `check-email.tsx` page it used went with it, now unreachable); the only way to get
+  a host account is the "Request access" tab writing to a new `access_requests` table (insert-
+  only RLS for `anon`/`authenticated`, no read grant at all — verified with a real anon-insert +
+  service-role-select round trip against the local stack) and a `/request-submitted` page. An
+  admin approves or rejects by hand on `/admin` (`src/routes/_authenticated/admin.tsx`); approving
+  calls `supabaseAdmin.auth.admin.inviteUserByEmail` (redirecting to `/reset-password` to set a
+  password) exactly like feedblick-stars does. This is a **deliberately thin port** of stars'
+  1100-line `/admin` — stars' `has_role` RBAC table/migration/RPC was replaced with a plain
+  single-admin email allowlist (`src/lib/admin-emails.ts`'s `ADMIN_EMAILS`, checked server-side
+  against the caller's own JWT email claim in `admin.functions.ts`'s `assertAdmin` — never
+  trusted from the client), since there's exactly one admin today; move to a real roles table
+  only if that list actually grows. Also dropped: stars' rejection email (a custom Resend edge
+  function this app doesn't have — rejecting here just flips `status`) and its invite-resend/
+  toast-on-new-request niceties. `src/lib/access-request-status.ts` (the
+  `getAccessRequestAcceptanceStatus`/`buildUsersByEmail` pure functions, with their existing
+  tests) is ported byte-for-byte from stars — genuinely reusable logic with no product-specific
+  assumptions baked in.
+- **"Need 2 min" now has a real consequence, and the signal drill-down is gone** (2026-08-31,
+  "we don't need this functionality... 'Need 2 min' has no real consequence"): the teacher
+  panel's old click-a-meter-to-drill-into-per-fruit-counts interaction is removed entirely
+  (`SignalMeter`'s `active` prop went with it) — Done/Stuck are now plain, non-interactive
+  meters. The Need-2-min meter took over that click affordance for something real instead: tapping
+  it calls `buildExtend()` (`src/lib/timer.ts`, tested), adding `EXTEND_SECONDS` (120s) to
+  whatever phase is currently running or paused — extending both the target timestamp/remaining
+  seconds AND `timer_duration_seconds`, so `TimerWheel`'s fraction-of-total math doesn't run past
+  100%. Disabled while idle (`buildExtend` returns `null` — nothing to extend before a phase has
+  started). No cross-client reset of students' own "need 2 min" signal happens (or could — a host
+  can't write to another client's presence entry), so a student's signal stays lit until they
+  clear it themselves once they see the extra time land.
+- **Focus/Break icons, not text** (2026-08-31): `MinutesStepper` (in `rooms.$roomId.tsx`) takes
+  an `icon` prop now — `phaseEmoji("focus")`/`phaseEmoji("break")` (`PhaseIcon.tsx`, already used
+  everywhere else a phase needs a glyph) instead of the literal words "Focus"/"Break", with the
+  accessible name preserved via `role="group" aria-label={label}` on the row.
+- **Task claiming, Google-Docs style, no locks** (2026-08-31 — item 6 from the earlier
+  "explore this later" list, resolved once Sergio gave the actual design: "once something is
+  claimed, nobody claims it again, even without a locking mechanism in place... people editing
+  other people's text [in Docs] is so annoying that most people avoid it"): `room_tasks.claimed_by`
+  (migration `20260901090000_task_claim_and_auto_assign.sql`) is free-text, set to whoever last
+  tapped Claim — nothing technically stops a second person from tapping it too and overwriting the
+  name, by design. `nextClaimedBy()` (`src/lib/task-claim.ts`, tested) is the toggle: tapping your
+  own claim releases it, tapping anyone else's (including nobody's) reassigns it to you. Chose
+  Postgres over the presence channel for this one specifically — unlike name/group/signal, a claim
+  needs to survive the claiming student's own disconnect (dropped wifi shouldn't un-claim a task
+  before they even notice), and it's a property of the durable task, not of an ephemeral student
+  session. Security: `GRANT UPDATE (claimed_by) ON room_tasks TO anon, authenticated` is
+  column-scoped — participants can flip this one column and nothing else (verified live: an
+  anon PATCH to `claimed_by` succeeds, the same PATCH targeting `text` gets a real Postgres
+  permission-denied). Visible on both screens: the student page's claim button doubles as the
+  status display (shows the claimant's name once set); the teacher's to-do list shows "Claimed
+  by X" as small text next to each claimed task.
+- **Auto-assign groups toggle** (2026-08-31, "is this possible?"): `rooms.auto_assign_groups`
+  (same migration as claiming), a `Switch` in the "Participants & groups" card header. When on,
+  a student who has typed a name but has no group yet gets one picked automatically
+  (`pickAutoAssignFruit()`, `src/lib/room-presence.ts`, tested with an injectable `rng` for
+  deterministic tie-breaks) instead of seeing the manual fruit picker — replaced with a read-only
+  "Your group: 🍍 Pineapple" / "Waiting to be assigned a group…" line. Deliberately smarter than
+  uniform `Math.random()`: it picks the currently LEAST-populated group (reusing
+  `summarizeByFruit`'s own counts) so independent per-student client-side picks still land roughly
+  balanced instead of piling into whichever groups got lucky first. Only fills in a missing group
+  — already-assigned students are left alone even if the host flips the toggle on mid-room; there's
+  no "reshuffle everyone now" action.
+- **Fixed: a returning student's locked name field came back editable** (2026-08-31 bug report,
+  "the 'You' text field keeps getting active without me clicking edit"): the sessionStorage-restore
+  effect in `session.$code.tsx` only ever called `setName(stored)`, never `setNameLocked(true)` —
+  so ANY full reload (a real page refresh, not just a dev-server hot-reload) brought the typed name
+  back but left the field unlocked, looking exactly like "it got active on its own." Fixed by
+  locking it in the same effect that restores it. (Some of what Sergio actually saw while testing
+  was very likely this session's own heavy file-editing triggering Vite/TanStack Start's dev-time
+  full-page reload on route-file saves — a one-time side effect of active development, not a
+  shipped defect — but the restore-without-lock gap was real and independent of that.)
+- **Joining the roster now requires locking the name field, not just pausing while typing**
+  (2026-09-01, "the name of the person should only be added to the list after the person
+  presses ENTER and the field flips to non-editable"): `session.$code.tsx` used to track
+  presence off a 400ms-debounced `committedName`, which meant a student showed up in the roster
+  a fraction of a second after they merely stopped typing — never confirming anything. Replaced
+  with `identifiedName` (`nameLocked ? name.trim() : ""`), derived straight from the same lock
+  state the pencil-to-edit button already uses, and the whole debounce mechanism
+  (`NAME_COMMIT_DELAY_MS`, `committedName` state) is gone — once the field is locked it can't
+  change anyway, so there was nothing left to debounce. Auto-assign and task-claiming (both
+  added earlier and gated on `committedName`) now gate on `identifiedName` instead.
+- **Claim pill: no icon** (2026-09-01, "I like the pill for 'claim' but remove the icon, looks
+  weird") — the `Hand` icon next to the claim label in `session.$code.tsx` is gone; the pill is
+  text-only (`Claim`, or the claimant's name once set).
+- **Pomodoro cycle cap** (2026-09-01, "say, auto-restart only 2 times"): `rooms.max_auto_restarts`
+  (host-adjustable, a `NumberStepper` next to Focus/Break — `MinutesStepper` was generalized into
+  `NumberStepper` to share the same -/+ control shape with a different unit/step/clamp) and
+  `rooms.auto_restarts_used` (migration `20260901100000_auto_restart_limit.sql`). The
+  auto-advance effect now calls `nextAutoAdvanceOutcome()` (`timer.ts`, tested) instead of
+  `nextAutoAdvancePatch()` directly — it returns `"advance"` (the normal phase-switch patch, plus
+  the bumped counter), `"capped"` (freezes the timer at 0 in whatever phase it's in, instead of
+  switching, once `auto_restarts_used` reaches the limit), or `"none"` (idle). Hitting the cap
+  also toasts the host (`duration: Infinity` + close button, same convention as the stuck-signal
+  toast) so a capped room doesn't just look silently stuck. `auto_restarts_used` resets to 0 on
+  a manual Reset or a fresh Start-from-idle — it's a budget for THIS run, not a lifetime count.
+- **Host broadcast announcements — not chat** (2026-09-01, "Lunch time at 12:30pm in Room 356" /
+  "please all groups gather in room 321"): a Megaphone icon button in the room panel's header
+  opens a `Dialog` with a single text field; sending calls `broadcastAnnouncement()`
+  (`room-presence.ts`), a fire-and-forget Supabase Realtime `broadcast` event on the room's
+  existing presence channel — no table, no history, one-way, exactly the "not chat" framing.
+  `useRoomPresenceChannel()` now also listens for this event and returns `announcement`, so
+  `/session/$code` and `/display/$code` both get it automatically. The student page shows it as
+  an interactive toast (`duration: Infinity` + close button, since a participant IS at their
+  device and can dismiss it). The display page instead shows a full-width top banner that
+  auto-hides after `ANNOUNCEMENT_DISPLAY_MS` (20s) — nobody's usually standing at the projector
+  to click a dismiss button, so an interactive toast would be the wrong pattern there. Verified
+  live with a real two-client broadcast round trip (`send` on one channel connection, `on` on a
+  separate one, same room code) before considering this done — realtime features in this app
+  don't get called working without that.
+- **Footer consistency + "Powered by Feedblick"** (2026-09-01, "the footer was not consistently
+  applied through all the pages"): `Footer.tsx` gained a third `"minimal"` variant — just the
+  Impressum/Privacy links, small, no brand lockup — for busy in-app screens where German law
+  still expects the legal links reachable but a full marketing footer would be clutter:
+  `/auth`, `/request-submitted`, `/dashboard`, `/account`, `/admin`, `/rooms/$roomId`, and
+  `/session/$code` all got `<Footer variant="minimal" />` added. `/display/$code` gets its own
+  hand-rolled tiny Impressum/Privacy row instead of the shared component (its whole design
+  language is intentionally free of the chrome every other page has — see its own note below),
+  plus a small "Powered by Feedblick" line directly under the QR code, per direct request.
+- **Auto-restart stepper icon fixed** (2026-09-01 — Sergio's "the new icon is just horrible"
+  turned out to mean the 🔁 emoji on the auto-restart-limit stepper, not the 🎉 break emoji as
+  first guessed): `NumberStepper`'s `icon` prop is now `ReactNode`, not a plain emoji string, so
+  a control row can take a real `lucide-react` icon (`Repeat`, sized to match the `Minus`/`Plus`
+  buttons already in the same row) instead of an emoji whose rendered visual weight doesn't
+  reliably match its neighbors. Focus/Break keep their emoji (still liked, just now wrapped in a
+  sized `<span>` to fit the same slot).
+- **Claiming toggle + thinner pill** (2026-09-01, "this is not always needed... could be
+  thinner"): `rooms.claiming_enabled` (default true — claiming already shipped default-on, this
+  just adds an off switch), a `Switch` on the To-do list card header mirroring the Auto-assign
+  toggle's own placement. Off, the claim pill disappears from BOTH screens entirely (not just
+  disabled) and every task behaves exactly like it did before claiming existed — `session.$code
+  .tsx` derives `tasksForClaiming` (claimed_by/completed forced to null/false when the toggle is
+  off) once and feeds it to the task table, the Done-gating check, and the checkbox logic alike,
+  so there's one place that decides "does claiming even apply right now," not three. The pill
+  itself also lost its `Hand` icon (previous round) and shrank its padding.
+- **Claimed-task completion is exclusive and shared, unclaimed stays private** (2026-09-01, "if
+  somebody claims a task, other users should not be able to check the item completed... if the
+  claimer completes it, the status should propagate... just hide the checkbox for other
+  users??"): `room_tasks.completed` (migration `20260901110000_...sql`, same column-scoped
+  `GRANT UPDATE (completed) ON room_tasks TO anon, authenticated` pattern as `claimed_by` —
+  verified live with the same claim-then-complete round trip as `claimed_by` itself) is the
+  shared completion flag for a CLAIMED task only; unclaimed tasks still use the local, never-
+  synced `checked` Set exactly as before ("one student finishing a task never marks it done for
+  anyone else" still holds for the common case). In `session.$code.tsx`'s task row: the claimant
+  sees a normal checkbox wired to `completed`; anyone else sees no checkbox at all for that row
+  (`!isSomeoneElses` gate) — a real permission check isn't possible since participants have no
+  verifiable identity for RLS to check against (just a self-reported name), so "hide it
+  client-side" is the actual, deliberate implementation, not a shortcut standing in for one.
+- **"Done" signal requires finishing your own tasks** (2026-09-01, "Done should not be active
+  unless all the tasks are checked?"): `canSignalDone()` (`task-claim.ts`, tested) gates the Done
+  signal button — a task claimed by someone ELSE never blocks you (not your responsibility), an
+  unclaimed task needs your local checkbox, and a task YOU claimed needs the shared `completed`
+  flag. An empty task list is vacuously done. Stuck/Need-2-min are unaffected; only Done gates on
+  this. Already-set Done isn't retroactively cleared if a checkbox gets unchecked afterward —
+  out of scope, an edge case not worth the complexity.
+- **Host can disable individual groups** (2026-09-01, "reduce the number of groups in a
+  session"): `rooms.disabled_fruits` (a `text[]`, same migration as claiming/completion) stores
+  the opt-OUT set so every existing room keeps offering all 8 with zero behavior change.
+  `group-fruits.ts` gained `toggleDisabledFruit`/`canToggleFruitEnabled` (refuses to disable the
+  last group standing)/`enabledFruitIds` (all tested). A row of the same 8 pills, now
+  host-clickable, sits above the roster table in "Participants & groups." Disabling a group never
+  touches anyone already assigned to it — only future picks (manual or auto-assigned) stop
+  offering it, same "don't disrupt existing assignments" principle auto-assign itself already
+  follows. The student picker and `pickAutoAssignFruit` both filter to `enabledFruitIds` now;
+  the picker specifically filters *without* re-indexing `GROUP_FRUITS`, since `badgeColor(i)`
+  keys off each fruit's fixed position — using the filtered array's own index would have shifted
+  colors around every time a group ahead of it got disabled.
 
 ## Known gaps / next up
 
+- No indicator anywhere of how many auto-restarts are left before a room hits its cap — the host
+  only finds out via the "cycles complete" toast when it actually happens.
+- Broadcast announcements have no history — join late (or dismiss the toast, or miss the display
+  banner's 20s window) and it's gone; the host would need to re-send for a latecomer.
 - Task reordering (tasks currently only append; no drag-to-reorder).
 - Room list has no pagination/archiving.
 - No group-size cap anymore (dropped with `room_badges.seats`) — nothing stops every student
-  picking the same fruit.
+  picking the same fruit manually; auto-assign groups (see above) sidesteps this for a host who
+  turns it on, but doesn't cap anything for manual self-assignment.
 - `FloatingQrPanel`'s dragged position isn't persisted (resets to the default corner on reload)
   and isn't clamped to the viewport — dragging it fully off-screen is currently possible.
+- The `/admin` approve/reject/delete server functions (`admin.functions.ts`) are exercised only
+  by typecheck + the pure logic's own unit tests, not a real signed-in HTTP round trip — TanStack
+  Start's serverFn dispatch goes through CSRF-protected `/_serverFn/<id>` POSTs that aren't
+  practical to script from a plain curl call the way the `access_requests` insert/RLS path was
+  verified. A local admin user matching `ADMIN_EMAILS` (`sergio.vargas@biodatum.io` /
+  `password123`) and a real pending request row already exist in the local stack — click through
+  Approve/Reject on `/admin` by hand at least once before relying on the invite-email path.
+- No rejection email is sent (see the request-access entry above) — a rejected applicant sees no
+  automatic notice, only the status flip an admin could relay by hand if needed.
+- Task claiming (see above) has no UI limit on how many tasks one person claims at once, and no
+  "claimed by me" filter/highlight across the whole list — just the per-row label.
 - Unit tests exist for the pure logic (`timer.ts`'s `build*`/`shouldAutoAdvance`/
-  `nextAutoAdvancePatch` functions, `room-presence.ts`'s `summarize*` functions, `room-code.ts`,
+  `nextAutoAdvancePatch`/`buildExtend`/`transportAction` functions, `room-presence.ts`'s
+  `summarize*`/`pickAutoAssignFruit` functions, `task-claim.ts`'s `nextClaimedBy`, `room-code.ts`,
   and a `RosterTable` behavior test — the last one caught a real sort-direction bug: "desc" used
   to blindly `.reverse()` the whole array, which put unassigned students FIRST instead of
   always-last). Still no Playwright/pgTAP coverage for any of the room/timer/signal flow

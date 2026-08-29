@@ -8,10 +8,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BrandMark } from "@/components/BrandMark";
 import { BackgroundGlow } from "@/components/BackgroundGlow";
+import { Footer } from "@/components/Footer";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
 
 export const Route = createFileRoute("/auth")({
+  validateSearch: (s: Record<string, unknown>): { tab?: "signin" | "request" } => ({
+    tab: s.tab === "request" ? "request" : undefined,
+  }),
   head: () => ({
     meta: [{ title: "Sign in · Feedblick Pomodoro" }, { name: "robots", content: "noindex" }],
   }),
@@ -20,6 +24,7 @@ export const Route = createFileRoute("/auth")({
 
 function AuthPage() {
   const navigate = useNavigate();
+  const { tab } = Route.useSearch();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -44,20 +49,6 @@ function AuthPage() {
     navigate({ to: "/dashboard" });
   };
 
-  const onSignUp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { emailRedirectTo: `${window.location.origin}/dashboard` },
-    });
-    setLoading(false);
-    if (error) return toast.error(error.message);
-    if (data.session) return navigate({ to: "/dashboard" });
-    navigate({ to: "/check-email", search: { email } });
-  };
-
   const onReset = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -80,8 +71,8 @@ function AuthPage() {
         </div>
         <Card>
           <CardHeader>
-            <CardTitle className="text-2xl">Teacher sign in</CardTitle>
-            <CardDescription>Sign in to open a room for your class.</CardDescription>
+            <CardTitle className="text-2xl">Host sign in</CardTitle>
+            <CardDescription>Sign in to open a room for your team.</CardDescription>
           </CardHeader>
           <CardContent>
             {resetMode ? (
@@ -102,10 +93,10 @@ function AuthPage() {
                 </button>
               </form>
             ) : (
-              <Tabs defaultValue="signin">
+              <Tabs defaultValue={tab === "request" ? "request" : "signin"}>
                 <TabsList className="grid grid-cols-2 w-full">
                   <TabsTrigger value="signin">Sign in</TabsTrigger>
-                  <TabsTrigger value="signup">Create account</TabsTrigger>
+                  <TabsTrigger value="request">Request access</TabsTrigger>
                 </TabsList>
                 <TabsContent value="signin">
                   <form onSubmit={onSignIn} className="space-y-4 pt-4" suppressHydrationWarning>
@@ -128,19 +119,8 @@ function AuthPage() {
                     </button>
                   </form>
                 </TabsContent>
-                <TabsContent value="signup">
-                  <form onSubmit={onSignUp} className="space-y-4 pt-4" suppressHydrationWarning>
-                    <Field label="Email" type="email" value={email} onChange={setEmail} />
-                    <Field
-                      label="Password"
-                      type="password"
-                      value={password}
-                      onChange={setPassword}
-                    />
-                    <Button type="submit" disabled={loading} className="w-full">
-                      {loading ? "Creating account…" : "Create account"}
-                    </Button>
-                  </form>
+                <TabsContent value="request">
+                  <RequestAccessForm />
                 </TabsContent>
               </Tabs>
             )}
@@ -151,8 +131,44 @@ function AuthPage() {
             </p>
           </CardContent>
         </Card>
+        <Footer variant="minimal" />
       </div>
     </div>
+  );
+}
+
+function RequestAccessForm() {
+  const navigate = useNavigate();
+  const [name, setName] = useState("");
+  const [teamName, setTeamName] = useState("");
+  const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    const { error } = await supabase.from("access_requests").insert({
+      name,
+      email,
+      team_name: teamName,
+    });
+    setLoading(false);
+    if (error) return toast.error(error.message);
+    navigate({ to: "/request-submitted" });
+  };
+
+  return (
+    <form onSubmit={onSubmit} className="space-y-4 pt-4" suppressHydrationWarning>
+      <p className="text-sm text-muted-foreground">
+        Tell us a bit about your team and we'll set up your host account.
+      </p>
+      <Field label="Your name" type="text" value={name} onChange={setName} />
+      <Field label="Team name" type="text" value={teamName} onChange={setTeamName} />
+      <Field label="Email" type="email" value={email} onChange={setEmail} />
+      <Button type="submit" disabled={loading} className="w-full">
+        {loading ? "Submitting…" : "Request access"}
+      </Button>
+    </form>
   );
 }
 

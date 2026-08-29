@@ -98,6 +98,33 @@ export function buildReset(): RoomTimerUpdate {
   };
 }
 
+// Gives "Need 2 min" a real consequence: the host can add time to whichever phase is currently
+// running or paused. Extends the total duration too (not just the target timestamp) so
+// TimerWheel's own fraction-of-total math doesn't run past 100% the moment this lands. Returns
+// null for idle — there's no running/paused phase yet to extend.
+export function buildExtend(state: RoomTimerRow, extraSeconds: number): RoomTimerUpdate | null {
+  if (state.timer_phase === "idle") return null;
+  const timer_duration_seconds = (state.timer_duration_seconds ?? 0) + extraSeconds;
+  if (state.timer_target_at) {
+    return {
+      timer_phase: state.timer_phase,
+      timer_target_at: new Date(
+        new Date(state.timer_target_at).getTime() + extraSeconds * 1000,
+      ).toISOString(),
+      timer_remaining_seconds: null,
+      timer_duration_seconds,
+      timer_round: state.timer_round,
+    };
+  }
+  return {
+    timer_phase: state.timer_phase,
+    timer_target_at: null,
+    timer_remaining_seconds: (state.timer_remaining_seconds ?? 0) + extraSeconds,
+    timer_duration_seconds,
+    timer_round: state.timer_round,
+  };
+}
+
 // The zero-crossing check behind "when a phase's countdown ends, start the next one
 // automatically" — pulled out as its own pure function specifically so it's unit-testable
 // without rendering the component effect it lives in. True only the instant `remainingSeconds`
@@ -124,6 +151,49 @@ export function nextAutoAdvancePatch(
   if (state.timer_phase === "focus") return buildStartBreak(state.timer_round, state.break_minutes);
   if (state.timer_phase === "break") return buildStartFocus(state.focus_minutes, state.timer_round);
   return null;
+}
+
+export const MIN_AUTO_RESTARTS = 1;
+export const MAX_AUTO_RESTARTS = 10;
+
+export function clampAutoRestarts(n: number): number {
+  return Math.min(MAX_AUTO_RESTARTS, Math.max(MIN_AUTO_RESTARTS, n));
+}
+
+// Wraps nextAutoAdvancePatch with "auto-restart only N times" ("say, 2" — Sergio's own framing):
+// once auto_restarts_used reaches the room's max_auto_restarts, the auto-advance effect stops
+// switching phases on its own and freezes the timer at 0 in whatever phase it just finished,
+// instead of continuing forever. A manual action (Start/Reset) resets auto_restarts_used
+// separately — this function only ever counts up, never down.
+export type AutoAdvanceOutcome =
+  | { kind: "none" }
+  | { kind: "advance"; patch: RoomTimerUpdate; autoRestartsUsed: number }
+  | { kind: "capped"; patch: RoomTimerUpdate };
+
+export function nextAutoAdvanceOutcome(
+  state: RoomTimerRow & {
+    focus_minutes: number;
+    break_minutes: number;
+    max_auto_restarts: number;
+    auto_restarts_used: number;
+  },
+): AutoAdvanceOutcome {
+  if (state.timer_phase === "idle") return { kind: "none" };
+  if (state.auto_restarts_used >= state.max_auto_restarts) {
+    return {
+      kind: "capped",
+      patch: {
+        timer_phase: state.timer_phase,
+        timer_target_at: null,
+        timer_remaining_seconds: 0,
+        timer_duration_seconds: state.timer_duration_seconds,
+        timer_round: state.timer_round,
+      },
+    };
+  }
+  const patch = nextAutoAdvancePatch(state);
+  if (!patch) return { kind: "none" };
+  return { kind: "advance", patch, autoRestartsUsed: state.auto_restarts_used + 1 };
 }
 
 // `timer_round` increments once per completed (or skipped) focus phase, when its break starts

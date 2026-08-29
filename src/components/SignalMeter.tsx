@@ -28,7 +28,6 @@ export function SignalMeter({
   label,
   size = 128,
   strokeWidth = 12,
-  active = false,
 }: {
   kind: "done" | "stuck" | "need2min";
   count: number;
@@ -36,7 +35,6 @@ export function SignalMeter({
   label: string;
   size?: number;
   strokeWidth?: number;
-  active?: boolean;
 }) {
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
@@ -45,12 +43,7 @@ export function SignalMeter({
   const colors = RING_COLORS[kind];
 
   return (
-    <div
-      className={cn(
-        "flex flex-col items-center gap-1.5 rounded-lg border px-2 py-3",
-        active ? "border-primary bg-primary/5" : "border-transparent",
-      )}
-    >
+    <div className="flex flex-col items-center gap-1.5 rounded-lg border border-transparent px-2 py-3">
       <div className="relative shrink-0" style={{ width: size, height: size }}>
         <svg width={size} height={size} className="-rotate-90">
           <circle
