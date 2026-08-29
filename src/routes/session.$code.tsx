@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { TimerWheel } from "@/components/TimerWheel";
 import { cn } from "@/lib/utils";
 import { getOrCreateHandle } from "@/lib/fruit-handle";
 import { useRoomByCode, useRoomBadges, useRoomTasks } from "@/hooks/use-room";
@@ -13,14 +13,13 @@ import {
   type SignalKind,
   type StudentPresence,
 } from "@/lib/room-presence";
-import { useCountdown, formatRemaining } from "@/lib/countdown";
 import { useRoomTimerDisplay } from "@/lib/timer";
 
-export const Route = createFileRoute("/join/$code")({
+export const Route = createFileRoute("/session/$code")({
   head: () => ({
-    meta: [{ title: "Join · Feedblick Pomodoro" }, { name: "robots", content: "noindex" }],
+    meta: [{ title: "Session · Feedblick Pomodoro" }, { name: "robots", content: "noindex" }],
   }),
-  component: JoinRoom,
+  component: SessionView,
   ssr: false,
 });
 
@@ -38,7 +37,7 @@ const SIGNALS: { kind: SignalKind; label: string }[] = [
   { kind: "need2min", label: "Need 2 min" },
 ];
 
-function JoinRoom() {
+function SessionView() {
   const { code } = Route.useParams();
   const { room, loading, notFound } = useRoomByCode(code);
   const { tasks } = useRoomTasks(room?.id);
@@ -124,16 +123,13 @@ function JoinRoom() {
         <p className="text-2xl font-bold">{handle}</p>
       </div>
 
-      <Card>
-        <CardContent className="py-6 text-center space-y-1">
-          <p className="text-5xl font-bold tabular-nums">
-            {formatRemaining(timer.remainingSeconds)}
-          </p>
-          <p className="text-sm text-muted-foreground capitalize">
-            {timer.phase} · round {timer.round}
-          </p>
-        </CardContent>
-      </Card>
+      <div className="flex justify-center">
+        <TimerWheel
+          remainingSeconds={timer.remainingSeconds}
+          totalSeconds={timer.totalSeconds}
+          label={`${timer.phase} · round ${timer.round}`}
+        />
+      </div>
 
       <div>
         <p className="text-sm font-medium mb-2">How's it going?</p>

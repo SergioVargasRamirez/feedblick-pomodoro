@@ -9,7 +9,7 @@ export type RoomBadge = Tables<"room_badges">;
 // extend it once set; recreate the room if a longer window turns out to be needed.
 export const ROOM_CODE_TTL_MINUTES = 60;
 
-export function joinUrl(code: string): string {
+export function sessionUrl(code: string): string {
   const origin = typeof window !== "undefined" ? window.location.origin : "";
-  return `${origin}/join/${code}`;
+  return `${origin}/session/${code}`;
 }

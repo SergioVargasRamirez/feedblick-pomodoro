@@ -8,7 +8,8 @@ import { toast } from "sonner";
 import { ArrowLeft, Copy, Check, Plus, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { QrCard } from "@/components/QrCard";
-import { joinUrl, type Room } from "@/lib/room";
+import { TimerWheel } from "@/components/TimerWheel";
+import { sessionUrl, type Room } from "@/lib/room";
 import { useRoom, useRoomBadges, useRoomTasks } from "@/hooks/use-room";
 import {
   useRoomPresenceChannel,
@@ -160,7 +161,7 @@ function RoomControl() {
       <main className="max-w-5xl mx-auto px-6 py-8 space-y-6">
         <div className="grid gap-6 md:grid-cols-2">
           <QrCard
-            url={joinUrl(room.code)}
+            url={sessionUrl(room.code)}
             title="Students join here"
             description={
               room.status === "active"
@@ -169,7 +170,7 @@ function RoomControl() {
                   : "Code expired — students can no longer join."
                 : "Room ended."
             }
-            actions={<CopyLinkButton url={joinUrl(room.code)} />}
+            actions={<CopyLinkButton url={sessionUrl(room.code)} />}
           />
 
           <Card>
@@ -220,33 +221,34 @@ function RoomControl() {
           <CardHeader>
             <CardTitle className="text-base">Timer</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-baseline gap-3">
-              <span className="text-4xl font-bold tabular-nums">
-                {formatRemaining(timer.remainingSeconds)}
-              </span>
-              <span className="text-sm text-muted-foreground capitalize">
+          <CardContent className="flex flex-col-reverse items-center gap-6 md:flex-row md:items-center md:justify-between">
+            <div className="w-full space-y-4">
+              <p className="text-sm text-muted-foreground capitalize">
                 {timer.phase} · round {timer.round}
-              </span>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {FOCUS_PRESET_MINUTES.map((m) => (
-                <Button key={m} variant="outline" size="sm" onClick={() => onStartFocus(m)}>
-                  {m}m focus
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {FOCUS_PRESET_MINUTES.map((m) => (
+                  <Button key={m} variant="outline" size="sm" onClick={() => onStartFocus(m)}>
+                    {m}m focus
+                  </Button>
+                ))}
+                <Button variant="outline" size="sm" onClick={onSkipToBreak}>
+                  Skip to {BREAK_MINUTES}m break
                 </Button>
-              ))}
-              <Button variant="outline" size="sm" onClick={onSkipToBreak}>
-                Skip to {BREAK_MINUTES}m break
-              </Button>
+              </div>
+              <div className="flex gap-2">
+                <Button onClick={onPauseResume} disabled={timer.phase === "idle"}>
+                  {timer.isRunning ? "Pause" : "Resume"}
+                </Button>
+                <Button variant="outline" onClick={onReset}>
+                  Reset
+                </Button>
+              </div>
             </div>
-            <div className="flex gap-2">
-              <Button onClick={onPauseResume} disabled={timer.phase === "idle"}>
-                {timer.isRunning ? "Pause" : "Resume"}
-              </Button>
-              <Button variant="outline" onClick={onReset}>
-                Reset
-              </Button>
-            </div>
+            <TimerWheel
+              remainingSeconds={timer.remainingSeconds}
+              totalSeconds={timer.totalSeconds}
+            />
           </CardContent>
         </Card>
 

@@ -73,7 +73,7 @@ carry before assuming a code problem.
   break), to-do list editor, group badge editor.
 - **Room display** (projector, unauthenticated): `/display/$code` — big countdown, QR, live
   counts.
-- **Student** (unauthenticated): `/join/$code` — gets a fruit handle, countdown, the three
+- **Student** (unauthenticated): `/session/$code` — gets a fruit handle, countdown, the three
   signal buttons, self-assign to a group badge (capped at the badge's `seats`, own choice
   only — see below), read-only task list with local ticking, a live "who's in this room" list.
 - **Handle capacity** (`src/lib/fruit-handle.ts`): at most `MAX_STUDENTS_PER_FRUIT` (4) students
@@ -82,7 +82,7 @@ carry before assuming a code problem.
   once every fruit is full. Assignment waits for the presence channel's first sync (`synced` on
   `useRoomPresenceChannel`) so it's deciding against a real snapshot of who's already there, not
   an empty-by-default one.
-- **Badge capacity**: a badge's `seats` is enforced, not just displayed — `/join/$code` disables
+- **Badge capacity**: a badge's `seats` is enforced, not just displayed — `/session/$code` disables
   a badge once it's at capacity (self excluded, so leaving is always possible).
 - **Realtime**: `src/lib/room-presence.ts` — one presence channel per room code
   (`room:{code}`), shared by all three screens; `src/hooks/use-room.ts` — `postgres_changes`
@@ -91,7 +91,9 @@ carry before assuming a code problem.
 - **Timer**: `src/lib/timer.ts` — pure `build*` functions (`buildStartFocus`, `buildStartBreak`,
   `buildPause`, `buildResume`, `buildReset`) return the DB patch to send; `useRoomTimerDisplay`
   renders it, reusing `countdown.ts`'s target-timestamp pattern while running and a static
-  `timer_remaining_seconds` while paused.
+  `timer_remaining_seconds` while paused. `src/components/TimerWheel.tsx` is the shared circular
+  countdown widget (SVG ring draining from full to empty), used by both the teacher panel and
+  `/session/$code`.
 
 ## Known gaps / next up
 

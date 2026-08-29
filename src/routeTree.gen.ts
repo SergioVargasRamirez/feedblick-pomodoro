@@ -16,7 +16,7 @@ import { Route as CheckEmailRouteImport } from './routes/check-email'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as DisplayCodeRouteImport } from './routes/display.$code'
-import { Route as JoinCodeRouteImport } from './routes/join.$code'
+import { Route as SessionCodeRouteImport } from './routes/session.$code'
 import { Route as AuthenticatedRoomsRoomIdRouteImport } from './routes/_authenticated/rooms.$roomId'
 
 const IndexRoute = IndexRouteImport.update({
@@ -53,9 +53,9 @@ const DisplayCodeRoute = DisplayCodeRouteImport.update({
   path: '/display/$code',
   getParentRoute: () => rootRouteImport,
 } as any)
-const JoinCodeRoute = JoinCodeRouteImport.update({
-  id: '/join/$code',
-  path: '/join/$code',
+const SessionCodeRoute = SessionCodeRouteImport.update({
+  id: '/session/$code',
+  path: '/session/$code',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedRoomsRoomIdRoute =
@@ -72,7 +72,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/display/$code': typeof DisplayCodeRoute
-  '/join/$code': typeof JoinCodeRoute
+  '/session/$code': typeof SessionCodeRoute
   '/rooms/$roomId': typeof AuthenticatedRoomsRoomIdRoute
 }
 export interface FileRoutesByTo {
@@ -82,7 +82,7 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/display/$code': typeof DisplayCodeRoute
-  '/join/$code': typeof JoinCodeRoute
+  '/session/$code': typeof SessionCodeRoute
   '/rooms/$roomId': typeof AuthenticatedRoomsRoomIdRoute
 }
 export interface FileRoutesById {
@@ -94,7 +94,7 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/display/$code': typeof DisplayCodeRoute
-  '/join/$code': typeof JoinCodeRoute
+  '/session/$code': typeof SessionCodeRoute
   '/_authenticated/rooms/$roomId': typeof AuthenticatedRoomsRoomIdRoute
 }
 export interface FileRouteTypes {
@@ -106,7 +106,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/dashboard'
     | '/display/$code'
-    | '/join/$code'
+    | '/session/$code'
     | '/rooms/$roomId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -116,7 +116,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/dashboard'
     | '/display/$code'
-    | '/join/$code'
+    | '/session/$code'
     | '/rooms/$roomId'
   id:
     | '__root__'
@@ -127,7 +127,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/_authenticated/dashboard'
     | '/display/$code'
-    | '/join/$code'
+    | '/session/$code'
     | '/_authenticated/rooms/$roomId'
   fileRoutesById: FileRoutesById
 }
@@ -138,7 +138,7 @@ export interface RootRouteChildren {
   CheckEmailRoute: typeof CheckEmailRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   DisplayCodeRoute: typeof DisplayCodeRoute
-  JoinCodeRoute: typeof JoinCodeRoute
+  SessionCodeRoute: typeof SessionCodeRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -192,11 +192,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DisplayCodeRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/join/$code': {
-      id: '/join/$code'
-      path: '/join/$code'
-      fullPath: '/join/$code'
-      preLoaderRoute: typeof JoinCodeRouteImport
+    '/session/$code': {
+      id: '/session/$code'
+      path: '/session/$code'
+      fullPath: '/session/$code'
+      preLoaderRoute: typeof SessionCodeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/rooms/$roomId': {
@@ -229,7 +229,7 @@ const rootRouteChildren: RootRouteChildren = {
   CheckEmailRoute: CheckEmailRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   DisplayCodeRoute: DisplayCodeRoute,
-  JoinCodeRoute: JoinCodeRoute,
+  SessionCodeRoute: SessionCodeRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Card, CardContent } from "@/components/ui/card";
 import { QrCard } from "@/components/QrCard";
-import { joinUrl } from "@/lib/room";
+import { sessionUrl } from "@/lib/room";
 import { useRoomByCode } from "@/hooks/use-room";
 import { useRoomPresenceChannel, summarizeSignals } from "@/lib/room-presence";
 import { useCountdown, formatRemaining } from "@/lib/countdown";
@@ -67,7 +67,7 @@ function RoomDisplay() {
 
       {room.status === "active" && isFinite(expiresIn) && expiresIn > 0 && (
         <QrCard
-          url={joinUrl(room.code)}
+          url={sessionUrl(room.code)}
           title={`Join code: ${room.code}`}
           description={`Expires in ${formatRemaining(expiresIn)}`}
         />
