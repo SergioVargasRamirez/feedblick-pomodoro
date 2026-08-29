@@ -26,8 +26,8 @@ export function SignalMeter({
   count,
   total,
   label,
-  size = 88,
-  strokeWidth = 9,
+  size = 128,
+  strokeWidth = 12,
   active = false,
 }: {
   kind: "done" | "stuck" | "need2min";
@@ -75,7 +75,7 @@ export function SignalMeter({
           />
         </svg>
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-lg font-semibold tabular-nums">{count}</span>
+          <span className="text-2xl font-semibold tabular-nums">{count}</span>
         </div>
       </div>
       {/* Label, not color alone, carries what this meter means. */}

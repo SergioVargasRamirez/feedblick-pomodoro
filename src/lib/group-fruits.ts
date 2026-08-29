@@ -20,9 +20,10 @@ export const GROUP_FRUITS: GroupFruit[] = [
   { id: "apple", label: "Apple", emoji: "🍎" },
   { id: "orange", label: "Orange", emoji: "🍊" },
   { id: "avocado", label: "Avocado", emoji: "🥑" },
-  // No standalone lime emoji with reliable cross-platform support (the Unicode 15.1 "lime" is
-  // a lemon+green-square ZWJ sequence that falls back to two separate glyphs on older systems)
-  // — plain lemon stands in.
-  { id: "lime", label: "Lime", emoji: "🍋" },
+  // Called "Lemon," not "Lime" — the emoji is a lemon (🍋), and no standalone lime emoji has
+  // reliable cross-platform support (Unicode's newer "lime" is a lemon+green-square ZWJ
+  // sequence that falls back to two separate glyphs on older systems), so naming it for what
+  // it actually looks like beat naming it for what it was standing in for.
+  { id: "lemon", label: "Lemon", emoji: "🍋" },
   { id: "cherry", label: "Cherry", emoji: "🍒" },
 ];

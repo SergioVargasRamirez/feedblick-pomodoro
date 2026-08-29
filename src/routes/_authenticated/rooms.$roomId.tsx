@@ -5,10 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, Trash2, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, AlertTriangle, Minus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { TimerWheel } from "@/components/TimerWheel";
 import { SignalMeter } from "@/components/SignalMeter";
+import { InRoomBadge } from "@/components/InRoomBadge";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { BrandMark } from "@/components/BrandMark";
 import { BackgroundGlow } from "@/components/BackgroundGlow";
@@ -27,13 +28,16 @@ import {
   type SignalKind,
 } from "@/lib/room-presence";
 import {
-  BREAK_MINUTES,
-  FOCUS_PRESET_MINUTES,
   buildPause,
   buildReset,
   buildResume,
   buildStartBreak,
   buildStartFocus,
+  clampMinutes,
+  MINUTES_STEP,
+  nextAutoAdvancePatch,
+  phaseLabel,
+  shouldAutoAdvance,
   useRoomTimerDisplay,
 } from "@/lib/timer";
 
@@ -60,6 +64,7 @@ function RoomControl() {
   const { students } = useRoomPresenceChannel(room?.code);
   const [drillSignal, setDrillSignal] = useState<SignalKind | null>(null);
   const [newTask, setNewTask] = useState("");
+  const [nameInput, setNameInput] = useState("");
 
   // Hooks must run unconditionally every render, so this runs against a fallback idle shape
   // before we know whether `room` has loaded yet — the loading-guard return below happens
@@ -73,6 +78,36 @@ function RoomControl() {
       timer_round: 1,
     },
   );
+
+  // Deliberately keyed on `room?.id`, not `room` itself — resyncing the input from every
+  // realtime update of the row (e.g. the timer ticking) would blow away whatever the teacher
+  // is mid-typing; only a genuine room switch should reset it.
+  useEffect(() => {
+    if (room) setNameInput(room.name);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [room?.id]);
+
+  const updateRoom = async (patch: Partial<Room>) => {
+    if (!room) return;
+    const { error } = await supabase.from("rooms").update(patch).eq("id", room.id);
+    if (error) toast.error(error.message);
+  };
+
+  // "When a break ends, the timer doesn't reset to a second pomodoro" — it was never supposed
+  // to on its own; every phase change was manual-click-only. Auto-advances focus->break and
+  // break->focus the instant a running countdown reaches zero, reusing the room's current
+  // focus/break length settings. Only runs while actually counting down (isRunning) — a timer
+  // sitting paused at 0 (which can't happen, since pausing captures whatever was left, but
+  // defensively) or idle never triggers this.
+  const prevRemainingRef = useRef<number | null>(null);
+  useEffect(() => {
+    const prev = prevRemainingRef.current;
+    prevRemainingRef.current = timer.remainingSeconds;
+    if (!room || !shouldAutoAdvance(prev, timer.remainingSeconds, timer.isRunning)) return;
+    const patch = nextAutoAdvancePatch(room);
+    if (patch) updateRoom(patch);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timer.remainingSeconds, timer.isRunning, room]);
 
   // A toast the instant someone signals "stuck" — a missed stuck signal is worse than a toast
   // that lingers, so this stays until dismissed (duration: Infinity + closeButton), same
@@ -111,16 +146,13 @@ function RoomControl() {
     GROUP_FRUITS.map((f) => f.id),
   );
 
-  const updateTimer = async (patch: Partial<Room>) => {
-    const { error } = await supabase.from("rooms").update(patch).eq("id", room.id);
-    if (error) toast.error(error.message);
-  };
-
-  const onStartFocus = (minutes: number) =>
-    updateTimer(buildStartFocus(minutes, room.timer_phase === "idle" ? 1 : room.timer_round));
-  const onPauseResume = () => updateTimer(timer.isRunning ? buildPause(room) : buildResume(room));
-  const onReset = () => updateTimer(buildReset());
-  const onSkipToBreak = () => updateTimer(buildStartBreak(room.timer_round));
+  const onStartFocus = () =>
+    updateRoom(
+      buildStartFocus(room.focus_minutes, room.timer_phase === "idle" ? 1 : room.timer_round),
+    );
+  const onPauseResume = () => updateRoom(timer.isRunning ? buildPause(room) : buildResume(room));
+  const onReset = () => updateRoom(buildReset());
+  const onSkipToBreak = () => updateRoom(buildStartBreak(room.timer_round, room.break_minutes));
 
   const onEndRoom = async () => {
     const { error } = await supabase.from("rooms").update({ status: "ended" }).eq("id", room.id);
@@ -165,6 +197,14 @@ function RoomControl() {
             </Link>
           </div>
           <div className="flex items-center gap-3">
+            <Input
+              value={nameInput}
+              onChange={(e) => setNameInput(e.target.value)}
+              onBlur={() => updateRoom({ name: nameInput.trim() })}
+              onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+              placeholder="Untitled room"
+              className="h-8 w-40 text-sm"
+            />
             <span className="font-mono text-lg tracking-widest">{room.code}</span>
             {room.status === "active" ? (
               <Button variant="outline" size="sm" onClick={onEndRoom}>
@@ -186,19 +226,23 @@ function RoomControl() {
             </CardHeader>
             <CardContent className="flex flex-col-reverse items-center gap-6 md:flex-row md:items-center md:justify-between">
               <div className="w-full space-y-4">
-                <p className="text-sm text-muted-foreground capitalize">
-                  {timer.phase} · round {timer.round}
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {FOCUS_PRESET_MINUTES.map((m) => (
-                    <Button key={m} variant="outline" size="sm" onClick={() => onStartFocus(m)}>
-                      {m}m focus
+                <p className="text-sm text-muted-foreground">{phaseLabel(timer)}</p>
+                <MinutesStepper
+                  label="Focus"
+                  minutes={room.focus_minutes}
+                  onChange={(m) => updateRoom({ focus_minutes: m })}
+                  action={<Button onClick={onStartFocus}>Start focus</Button>}
+                />
+                <MinutesStepper
+                  label="Break"
+                  minutes={room.break_minutes}
+                  onChange={(m) => updateRoom({ break_minutes: m })}
+                  action={
+                    <Button variant="outline" onClick={onSkipToBreak}>
+                      Skip to break
                     </Button>
-                  ))}
-                  <Button variant="outline" size="sm" onClick={onSkipToBreak}>
-                    Skip to {BREAK_MINUTES}m break
-                  </Button>
-                </div>
+                  }
+                />
                 <div className="flex gap-2">
                   <Button onClick={onPauseResume} disabled={timer.phase === "idle"}>
                     {timer.isRunning ? "Pause" : "Resume"}
@@ -256,10 +300,7 @@ function RoomControl() {
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex flex-wrap items-center gap-4">
-              <div className="rounded-md border px-3 py-2">
-                <p className="text-xs text-muted-foreground">In room</p>
-                <p className="text-2xl font-semibold tabular-nums">{signalCounts.total}</p>
-              </div>
+              <InRoomBadge count={signalCounts.total} />
               {(["done", "stuck", "need2min"] as SignalKind[]).map((kind) => (
                 <button
                   key={kind}
@@ -307,6 +348,42 @@ function RoomControl() {
           </CardContent>
         </Card>
       </main>
+    </div>
+  );
+}
+
+function MinutesStepper({
+  label,
+  minutes,
+  onChange,
+  action,
+}: {
+  label: string;
+  minutes: number;
+  onChange: (minutes: number) => void;
+  action: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="w-12 text-sm text-muted-foreground">{label}</span>
+      <Button
+        size="icon"
+        variant="outline"
+        className="size-8"
+        onClick={() => onChange(clampMinutes(minutes - MINUTES_STEP))}
+      >
+        <Minus className="size-3.5" />
+      </Button>
+      <span className="w-16 text-center text-sm font-medium tabular-nums">{minutes} min</span>
+      <Button
+        size="icon"
+        variant="outline"
+        className="size-8"
+        onClick={() => onChange(clampMinutes(minutes + MINUTES_STEP))}
+      >
+        <Plus className="size-3.5" />
+      </Button>
+      {action}
     </div>
   );
 }

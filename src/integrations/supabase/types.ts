@@ -62,9 +62,12 @@ export type Database = {
       };
       rooms: {
         Row: {
+          break_minutes: number;
           code: string;
           created_at: string;
+          focus_minutes: number;
           id: string;
+          name: string;
           status: string;
           teacher_id: string;
           timer_duration_seconds: number | null;
@@ -74,9 +77,12 @@ export type Database = {
           timer_target_at: string | null;
         };
         Insert: {
+          break_minutes?: number;
           code: string;
           created_at?: string;
+          focus_minutes?: number;
           id?: string;
+          name?: string;
           status?: string;
           teacher_id: string;
           timer_duration_seconds?: number | null;
@@ -86,9 +92,12 @@ export type Database = {
           timer_target_at?: string | null;
         };
         Update: {
+          break_minutes?: number;
           code?: string;
           created_at?: string;
+          focus_minutes?: number;
           id?: string;
+          name?: string;
           status?: string;
           teacher_id?: string;
           timer_duration_seconds?: number | null;

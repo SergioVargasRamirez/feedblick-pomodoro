@@ -1,7 +1,16 @@
 import { useCountdown } from "./countdown";
 
-export const FOCUS_PRESET_MINUTES = [15, 25, 45, 50] as const;
-export const BREAK_MINUTES = 5;
+// Fixed presets replaced by a -/+ stepper the teacher adjusts freely — these are just its
+// bounds and the room row's defaults (see the migration adding focus_minutes/break_minutes).
+export const DEFAULT_FOCUS_MINUTES = 25;
+export const DEFAULT_BREAK_MINUTES = 5;
+export const MIN_MINUTES = 5;
+export const MAX_MINUTES = 90;
+export const MINUTES_STEP = 5;
+
+export function clampMinutes(minutes: number): number {
+  return Math.min(MAX_MINUTES, Math.max(MIN_MINUTES, minutes));
+}
 
 export type TimerPhase = "idle" | "focus" | "break";
 
@@ -47,9 +56,10 @@ export function buildStartFocus(
   return startPhase("focus", minutes, round);
 }
 
-// Also used by "skip to break" — a completed focus round and a skipped one both land here,
-// there's no separate skip-specific state.
-export function buildStartBreak(currentRound: number, minutes = BREAK_MINUTES): RoomTimerUpdate {
+// Also used by "skip to break" (and by the auto-advance-when-a-phase-ends effect) — a
+// completed focus round, a skipped one, and an auto-advanced one all land here, there's no
+// separate state for any of them.
+export function buildStartBreak(currentRound: number, minutes: number): RoomTimerUpdate {
   return startPhase("break", minutes, currentRound + 1);
 }
 
@@ -86,6 +96,45 @@ export function buildReset(): RoomTimerUpdate {
     timer_duration_seconds: null,
     timer_round: 1,
   };
+}
+
+// The zero-crossing check behind "when a phase's countdown ends, start the next one
+// automatically" — pulled out as its own pure function specifically so it's unit-testable
+// without rendering the component effect it lives in. True only the instant `remainingSeconds`
+// goes from positive to zero (or below) while still actually running — a timer that's idle, or
+// paused sitting at some fixed remaining value, or already at zero on a previous check, must
+// not re-trigger.
+export function shouldAutoAdvance(
+  prevRemainingSeconds: number | null,
+  remainingSeconds: number,
+  isRunning: boolean,
+): boolean {
+  return (
+    isRunning && prevRemainingSeconds !== null && prevRemainingSeconds > 0 && remainingSeconds <= 0
+  );
+}
+
+// What to switch to once a phase's countdown reaches zero on its own: focus -> break using the
+// room's break length (and bumping the round, same as a manual skip), break -> focus using the
+// room's focus length (round unchanged, same as a manual restart). Returns null for idle —
+// there's nothing to auto-advance from before a phase has even started.
+export function nextAutoAdvancePatch(
+  state: RoomTimerRow & { focus_minutes: number; break_minutes: number },
+): RoomTimerUpdate | null {
+  if (state.timer_phase === "focus") return buildStartBreak(state.timer_round, state.break_minutes);
+  if (state.timer_phase === "break") return buildStartFocus(state.focus_minutes, state.timer_round);
+  return null;
+}
+
+// No round counter shown anymore ("not sure we need the Round 1, 2, etc") — just which phase,
+// with an emoji, and whether it's paused. Shared by the teacher panel, the student session page,
+// and the projector display so the three can't drift on wording.
+export function phaseLabel(timer: { phase: string; isPaused: boolean }): string {
+  if (timer.phase === "idle") return "Ready";
+  if (timer.isPaused) return "Paused ⏸️";
+  if (timer.phase === "focus") return "Focus 🍅";
+  if (timer.phase === "break") return "Break 🎉";
+  return "";
 }
 
 // Live display of a room's timer, whether it's running (ticks via useCountdown, same

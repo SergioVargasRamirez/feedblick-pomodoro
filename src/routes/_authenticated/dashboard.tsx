@@ -2,9 +2,21 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { BrandMark } from "@/components/BrandMark";
 import { BackgroundGlow } from "@/components/BackgroundGlow";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { generateRoomCode } from "@/lib/room-code";
 import type { Room } from "@/lib/room";
@@ -71,6 +83,12 @@ function Dashboard() {
     }
   };
 
+  const onDeleteRoom = async (id: string) => {
+    const { error } = await supabase.from("rooms").delete().eq("id", id);
+    if (error) toast.error(error.message);
+    else setRooms((prev) => prev.filter((r) => r.id !== id));
+  };
+
   return (
     <div className="relative isolate min-h-screen bg-background">
       <BackgroundGlow />
@@ -99,22 +117,30 @@ function Dashboard() {
         {!loading && rooms.length === 0 && (
           <Card>
             <CardContent className="py-10 text-center text-muted-foreground">
-              No rooms yet. Create one to get a join code for your students.
+              No rooms yet. Create one to get a join code for your students — a room stays joinable
+              until you end it, so it's fine to create one well ahead of class.
             </CardContent>
           </Card>
         )}
 
         <div className="space-y-3">
           {rooms.map((room) => (
-            <Link key={room.id} to="/rooms/$roomId" params={{ roomId: room.id }}>
-              <Card className="hover:border-primary transition-colors">
-                <CardContent className="py-4 flex items-center justify-between">
-                  <div>
-                    <p className="font-mono text-lg tracking-widest">{room.code}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {new Date(room.created_at).toLocaleString()}
-                    </p>
-                  </div>
+            <Card key={room.id} className="hover:border-primary transition-colors">
+              <CardContent className="py-4 flex items-center justify-between gap-3">
+                <Link
+                  to="/rooms/$roomId"
+                  params={{ roomId: room.id }}
+                  className="min-w-0 flex-1 space-y-0.5"
+                >
+                  <p className="font-medium truncate">{room.name || "Untitled room"}</p>
+                  <p className="font-mono text-sm tracking-widest text-muted-foreground">
+                    {room.code}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {new Date(room.created_at).toLocaleString()}
+                  </p>
+                </Link>
+                <div className="flex shrink-0 items-center gap-3">
                   <span
                     className={
                       room.status === "active"
@@ -124,9 +150,36 @@ function Dashboard() {
                   >
                     {room.status === "active" ? "Active" : "Ended"}
                   </span>
-                </CardContent>
-              </Card>
-            </Link>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-muted-foreground hover:text-destructive"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete this room?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This permanently deletes "{room.name || room.code}" and its to-do list.
+                          This can't be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => onDeleteRoom(room.id)}>
+                          Delete
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+              </CardContent>
+            </Card>
           ))}
         </div>
       </main>

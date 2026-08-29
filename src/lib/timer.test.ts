@@ -1,11 +1,15 @@
 import { describe, expect, test } from "bun:test";
 import {
-  BREAK_MINUTES,
   buildPause,
   buildReset,
   buildResume,
   buildStartBreak,
   buildStartFocus,
+  clampMinutes,
+  MAX_MINUTES,
+  MIN_MINUTES,
+  nextAutoAdvancePatch,
+  shouldAutoAdvance,
   type RoomTimerRow,
 } from "./timer";
 
@@ -37,19 +41,33 @@ describe("buildStartFocus", () => {
 });
 
 describe("buildStartBreak", () => {
-  test("sets phase to break, defaults to BREAK_MINUTES, and increments the round", () => {
-    const patch = buildStartBreak(2);
+  test("sets phase to break with the given length and increments the round", () => {
+    const patch = buildStartBreak(2, 5);
     expect(patch.timer_phase).toBe("break");
-    expect(patch.timer_duration_seconds).toBe(BREAK_MINUTES * 60);
+    expect(patch.timer_duration_seconds).toBe(5 * 60);
     expect(patch.timer_round).toBe(3);
-    expect(secondsUntil(patch.timer_target_at)).toBeCloseTo(BREAK_MINUTES * 60, 0);
+    expect(secondsUntil(patch.timer_target_at)).toBeCloseTo(5 * 60, 0);
   });
 
-  test("also used by skip-to-break — same shape, no separate skip state", () => {
+  test("also used by skip-to-break and auto-advance — same shape either way", () => {
     const skipped = buildStartBreak(1, 10);
     expect(skipped.timer_phase).toBe("break");
     expect(skipped.timer_duration_seconds).toBe(10 * 60);
     expect(skipped.timer_round).toBe(2);
+  });
+});
+
+describe("clampMinutes", () => {
+  test("leaves an in-range value alone", () => {
+    expect(clampMinutes(25)).toBe(25);
+  });
+
+  test("clamps below the minimum up to it", () => {
+    expect(clampMinutes(0)).toBe(MIN_MINUTES);
+  });
+
+  test("clamps above the maximum down to it", () => {
+    expect(clampMinutes(1000)).toBe(MAX_MINUTES);
   });
 });
 
@@ -116,5 +134,62 @@ describe("buildReset", () => {
       timer_duration_seconds: null,
       timer_round: 1,
     });
+  });
+});
+
+// Regression coverage for "when a break ends, the timer doesn't reset to a second pomodoro" —
+// every phase change used to be manual-click-only, so a countdown reaching zero on its own did
+// nothing. These two pure functions are what the room panel's auto-advance effect calls.
+describe("shouldAutoAdvance", () => {
+  test("fires exactly on a running positive-to-zero crossing", () => {
+    expect(shouldAutoAdvance(3, 0, true)).toBe(true);
+  });
+
+  test("does not fire while paused, even at zero", () => {
+    expect(shouldAutoAdvance(3, 0, false)).toBe(false);
+  });
+
+  test("does not fire if it was already at zero last check (no re-firing)", () => {
+    expect(shouldAutoAdvance(0, 0, true)).toBe(false);
+  });
+
+  test("does not fire before any previous reading exists", () => {
+    expect(shouldAutoAdvance(null, 0, true)).toBe(false);
+  });
+
+  test("does not fire while still counting down", () => {
+    expect(shouldAutoAdvance(10, 9, true)).toBe(false);
+  });
+});
+
+describe("nextAutoAdvancePatch", () => {
+  test("focus ending advances to a break of the room's break length, round bumped", () => {
+    const patch = nextAutoAdvancePatch({
+      ...IDLE,
+      timer_phase: "focus",
+      timer_round: 1,
+      focus_minutes: 25,
+      break_minutes: 5,
+    });
+    expect(patch?.timer_phase).toBe("break");
+    expect(patch?.timer_duration_seconds).toBe(5 * 60);
+    expect(patch?.timer_round).toBe(2);
+  });
+
+  test("break ending advances to focus of the room's focus length, round unchanged", () => {
+    const patch = nextAutoAdvancePatch({
+      ...IDLE,
+      timer_phase: "break",
+      timer_round: 2,
+      focus_minutes: 25,
+      break_minutes: 5,
+    });
+    expect(patch?.timer_phase).toBe("focus");
+    expect(patch?.timer_duration_seconds).toBe(25 * 60);
+    expect(patch?.timer_round).toBe(2);
+  });
+
+  test("idle has nothing to advance from", () => {
+    expect(nextAutoAdvancePatch({ ...IDLE, focus_minutes: 25, break_minutes: 5 })).toBeNull();
   });
 });

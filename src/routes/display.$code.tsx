@@ -1,13 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Card, CardContent } from "@/components/ui/card";
 import { QrCard } from "@/components/QrCard";
 import { BrandMark } from "@/components/BrandMark";
-import { SignalMeter } from "@/components/SignalMeter";
+import { TomatoProgress } from "@/components/TomatoProgress";
 import { sessionUrl } from "@/lib/room";
 import { useRoomByCode } from "@/hooks/use-room";
-import { useRoomPresenceChannel, summarizeSignals } from "@/lib/room-presence";
 import { formatRemaining } from "@/lib/countdown";
-import { useRoomTimerDisplay } from "@/lib/timer";
+import { phaseLabel, useRoomTimerDisplay } from "@/lib/timer";
 
 export const Route = createFileRoute("/display/$code")({
   head: () => ({
@@ -28,9 +26,7 @@ const IDLE_TIMER = {
 function RoomDisplay() {
   const { code } = Route.useParams();
   const { room, loading, notFound } = useRoomByCode(code);
-  const { students } = useRoomPresenceChannel(room?.code);
   const timer = useRoomTimerDisplay(room ?? IDLE_TIMER);
-  const counts = summarizeSignals(students);
 
   if (loading) {
     return (
@@ -49,46 +45,31 @@ function RoomDisplay() {
   }
 
   return (
-    <div className="relative min-h-screen bg-background flex flex-col items-center justify-center gap-10 px-6 py-10">
+    <div className="relative min-h-screen bg-background flex flex-col items-center justify-center gap-8 px-6 py-10">
       <div className="absolute top-6 left-6">
         <BrandMark />
       </div>
+
+      <TomatoProgress
+        remainingSeconds={timer.remainingSeconds}
+        totalSeconds={timer.totalSeconds}
+        phase={timer.phase}
+      />
 
       <div className="text-center space-y-2">
         <p className="text-6xl md:text-8xl font-bold tabular-nums">
           {formatRemaining(timer.remainingSeconds)}
         </p>
-        <p className="text-lg text-muted-foreground capitalize">
-          {timer.phase} · round {timer.round}
-        </p>
-      </div>
-
-      <div className="flex flex-wrap items-center justify-center gap-6">
-        <DisplayStat label="In room" value={counts.total} />
-        <SignalMeter kind="done" count={counts.done} total={counts.total} label="Done" />
-        <SignalMeter kind="stuck" count={counts.stuck} total={counts.total} label="Stuck" />
-        <SignalMeter
-          kind="need2min"
-          count={counts.need2min}
-          total={counts.total}
-          label="Need 2 min"
-        />
+        <p className="text-lg text-muted-foreground">{phaseLabel(timer)}</p>
       </div>
 
       {room.status === "active" && (
-        <QrCard url={sessionUrl(room.code)} title={`Join code: ${room.code}`} />
+        <QrCard
+          url={sessionUrl(room.code)}
+          title="Scan to join"
+          description={sessionUrl(room.code)}
+        />
       )}
     </div>
-  );
-}
-
-function DisplayStat({ label, value }: { label: string; value: number }) {
-  return (
-    <Card>
-      <CardContent className="py-4 text-center">
-        <p className="text-3xl font-bold tabular-nums">{value}</p>
-        <p className="text-xs text-muted-foreground">{label}</p>
-      </CardContent>
-    </Card>
   );
 }

@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Pencil } from "lucide-react";
 import { TimerWheel } from "@/components/TimerWheel";
 import { BrandMark } from "@/components/BrandMark";
 import { BackgroundGlow } from "@/components/BackgroundGlow";
@@ -19,7 +21,7 @@ import {
   type SignalKind,
   type StudentPresence,
 } from "@/lib/room-presence";
-import { useRoomTimerDisplay } from "@/lib/timer";
+import { phaseLabel, useRoomTimerDisplay } from "@/lib/timer";
 
 export const Route = createFileRoute("/session/$code")({
   head: () => ({
@@ -58,6 +60,7 @@ function SessionView() {
 
   const [name, setName] = useState("");
   const [committedName, setCommittedName] = useState("");
+  const [nameLocked, setNameLocked] = useState(false);
   const [checked, setChecked] = useState<Set<string>>(new Set());
   const [self, setSelf] = useState<Pick<StudentPresence, "fruit" | "signal">>({
     fruit: null,
@@ -74,6 +77,12 @@ function SessionView() {
   const onNameChange = (value: string) => {
     setName(value);
     if (code) sessionStorage.setItem(nameStorageKey(code), value);
+  };
+
+  // Freezes the field once a name is in it — "only allow edits upon button click" — so it can't
+  // be accidentally cleared or half-edited by a stray tap later in the room.
+  const lockName = () => {
+    if (name.trim()) setNameLocked(true);
   };
 
   useEffect(() => {
@@ -138,7 +147,7 @@ function SessionView() {
             <TimerWheel
               remainingSeconds={timer.remainingSeconds}
               totalSeconds={timer.totalSeconds}
-              label={`${timer.phase} · round ${timer.round}`}
+              label={phaseLabel(timer)}
             />
           </CardContent>
         </Card>
@@ -153,13 +162,7 @@ function SessionView() {
             ) : (
               <ol className="space-y-3">
                 {tasks.map((t, i) => (
-                  <li key={t.id} className="flex items-center gap-3">
-                    <Checkbox
-                      checked={checked.has(t.id)}
-                      onCheckedChange={() => toggleTask(t.id)}
-                      id={`task-${t.id}`}
-                      className="size-5"
-                    />
+                  <li key={t.id} className="flex items-center justify-between gap-3">
                     <label
                       htmlFor={`task-${t.id}`}
                       className={cn(
@@ -169,6 +172,12 @@ function SessionView() {
                     >
                       {i + 1}. {t.text}
                     </label>
+                    <Checkbox
+                      checked={checked.has(t.id)}
+                      onCheckedChange={() => toggleTask(t.id)}
+                      id={`task-${t.id}`}
+                      className="size-5 shrink-0"
+                    />
                   </li>
                 ))}
               </ol>
@@ -197,12 +206,22 @@ function SessionView() {
 
       <div className="space-y-2">
         <p className="text-sm font-medium">You</p>
-        <Input
-          value={name}
-          onChange={(e) => onNameChange(e.target.value)}
-          placeholder="Your name, a nickname, whatever you like"
-          maxLength={40}
-        />
+        <div className="flex items-center gap-2">
+          <Input
+            value={name}
+            onChange={(e) => onNameChange(e.target.value)}
+            onBlur={lockName}
+            onKeyDown={(e) => e.key === "Enter" && lockName()}
+            disabled={nameLocked}
+            placeholder="Your name, a nickname, whatever you like"
+            maxLength={40}
+          />
+          {nameLocked && (
+            <Button size="icon" variant="outline" onClick={() => setNameLocked(false)}>
+              <Pencil className="size-4" />
+            </Button>
+          )}
+        </div>
         <div className="flex flex-wrap gap-2 pt-1">
           {GROUP_FRUITS.map((fruit, i) => {
             const isSelf = self.fruit === fruit.id;
