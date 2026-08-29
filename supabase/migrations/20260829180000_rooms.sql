@@ -108,3 +108,12 @@ GRANT ALL ON public.room_tasks TO service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.room_badges TO authenticated;
 GRANT SELECT ON public.room_badges TO anon;
 GRANT ALL ON public.room_badges TO service_role;
+
+-- Without this, every `postgres_changes` subscription in the app (the teacher panel's own
+-- task/badge/timer lists, and the room-display/join screens watching the `rooms` row) silently
+-- never fires: Realtime only streams changes for tables in this publication, and a table isn't
+-- added to it automatically just by existing. A write still succeeds either way — this is the
+-- difference between "the UI never reflects it without a manual reload" and it updating live.
+alter publication supabase_realtime add table public.rooms;
+alter publication supabase_realtime add table public.room_tasks;
+alter publication supabase_realtime add table public.room_badges;
