@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { BrandMark } from "@/components/BrandMark";
+import { BackgroundGlow } from "@/components/BackgroundGlow";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -28,7 +29,8 @@ function Home() {
           </div>
         </div>
       </header>
-      <main className="max-w-5xl mx-auto px-6 py-20 text-center">
+      <main className="max-w-5xl mx-auto px-6 py-20 relative isolate text-center">
+        <BackgroundGlow />
         <h1 className="text-4xl font-bold tracking-tight">Feedblick Pomodoro</h1>
         <p className="mt-4 text-lg text-muted-foreground">
           A shared pomodoro timer, task list, and anonymous group signals for students working in

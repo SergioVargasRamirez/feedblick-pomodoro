@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { BrandMark } from "@/components/BrandMark";
+import { BackgroundGlow } from "@/components/BackgroundGlow";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -59,7 +60,8 @@ function ResetPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background px-4">
+    <div className="relative min-h-screen flex items-center justify-center bg-background px-4">
+      <BackgroundGlow center />
       <Toaster />
       <div className="w-full max-w-md space-y-6">
         <div className="flex justify-center">

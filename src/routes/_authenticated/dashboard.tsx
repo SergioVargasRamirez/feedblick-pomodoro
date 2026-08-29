@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { BrandMark } from "@/components/BrandMark";
+import { BackgroundGlow } from "@/components/BackgroundGlow";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { supabase } from "@/integrations/supabase/client";
 import { generateRoomCode } from "@/lib/room-code";
@@ -88,7 +89,8 @@ function Dashboard() {
           </div>
         </div>
       </header>
-      <main className="max-w-3xl mx-auto px-6 py-10 space-y-6">
+      <main className="max-w-3xl mx-auto px-6 py-10 relative isolate space-y-6">
+        <BackgroundGlow />
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-semibold">Your rooms</h1>
           <Button onClick={onCreateRoom} disabled={creating}>

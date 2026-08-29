@@ -11,6 +11,7 @@ import { QrCard } from "@/components/QrCard";
 import { TimerWheel } from "@/components/TimerWheel";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { BrandMark } from "@/components/BrandMark";
+import { BackgroundGlow } from "@/components/BackgroundGlow";
 import { sessionUrl, type Room } from "@/lib/room";
 import { badgeColor } from "@/lib/badge-colors";
 import { cn } from "@/lib/utils";
@@ -166,7 +167,8 @@ function RoomControl() {
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-6 py-8 space-y-6">
+      <main className="max-w-5xl mx-auto px-6 py-8 relative isolate space-y-6">
+        <BackgroundGlow />
         <div className="grid gap-6 md:grid-cols-2">
           <QrCard
             url={sessionUrl(room.code)}

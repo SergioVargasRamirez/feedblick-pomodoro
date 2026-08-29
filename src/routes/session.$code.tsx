@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/table";
 import { TimerWheel } from "@/components/TimerWheel";
 import { BrandMark } from "@/components/BrandMark";
+import { BackgroundGlow } from "@/components/BackgroundGlow";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { ChevronUp, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -183,7 +184,8 @@ function SessionView() {
   }
 
   return (
-    <div className="min-h-screen bg-background px-4 py-6 space-y-6 max-w-3xl mx-auto">
+    <div className="relative min-h-screen bg-background px-4 py-6 space-y-6 max-w-3xl mx-auto">
+      <BackgroundGlow />
       <div className="flex items-center justify-between">
         <BrandMark />
         <ThemeToggle />
