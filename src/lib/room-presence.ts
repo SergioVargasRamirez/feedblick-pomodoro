@@ -5,14 +5,14 @@ import { supabase } from "@/integrations/supabase/client";
 export type SignalKind = "done" | "stuck" | "need2min";
 
 export type StudentPresence = {
-  handle: string;
+  name: string;
   badgeId: string | null;
   signal: SignalKind | null;
 };
 
 // What the hook below hands back for each connected student — the raw presence payload plus
-// the connection's own presence key, since `handle` alone isn't guaranteed unique (two
-// students can land on the same fruit+number by chance) and callers need a stable React key.
+// the connection's own presence key, since `name` alone isn't guaranteed unique (nothing stops
+// two students typing the same name) and callers need a stable React key.
 export type PresentStudent = StudentPresence & { presenceKey: string };
 
 // One Realtime channel per room code, shared by the room-display, teacher, and student
@@ -25,15 +25,15 @@ export function useRoomPresenceChannel(roomCode: string | undefined) {
   const [presenceState, setPresenceState] = useState<Record<string, StudentPresence[]>>({});
   // False until the first "sync" arrives — before that, presenceState is just empty-by-default,
   // not a real snapshot, and anything gating a decision on "who's already here" (capacity
-  // checks, handle assignment) needs to tell the two apart.
+  // checks) needs to tell the two apart.
   const [synced, setSynced] = useState(false);
 
   useEffect(() => {
     if (!roomCode) return;
     setSynced(false);
-    // Keyed by a fresh id per connection, deliberately not by the handle itself — two
-    // students can land on the same fruit+number by chance, and this key only needs to be
-    // unique per browser tab, never shown to anyone.
+    // Keyed by a fresh id per connection, deliberately not by the student's name — nothing
+    // stops two students typing the same name, and this key only needs to be unique per
+    // browser tab, never shown to anyone.
     const ch = supabase.channel(`room:${roomCode}`, {
       config: { presence: { key: crypto.randomUUID() } },
     });
@@ -76,7 +76,7 @@ export function summarizeSignals(students: StudentPresence[]): SignalCounts {
 }
 
 // Per-badge breakdown for the teacher's "tap a signal tile to see per-group counts" drill-down
-// — aggregated only, no handle ever surfaces here.
+// — aggregated only, no student name ever surfaces here.
 export function summarizeByBadge(
   students: StudentPresence[],
   badgeIds: string[],

@@ -10,11 +10,13 @@ signals (Done / Stuck / Need 2 min) the teacher sees aggregated, never attribute
 individual.
 
 Teacher identity is a normal Supabase Auth account. Student identity is intentionally NOT an
-account: each scan gets a random ephemeral handle — fruit + a two-digit number (e.g. "Mango
-07"), the pool defined in `src/lib/fruit-handle.ts` — valid only for that room session,
-discarded when the room expires. No student accounts, no names, no persistent tracking:
-group/signal state for students lives ONLY in a Supabase Realtime presence channel, never in
-Postgres, so there's nothing to clean up when a room ends.
+account: a student types their own name/nickname/codename on `/session/$code` — revised
+2026-08-29 away from an earlier auto-assigned-fruit-handle design (see git history) once Sergio
+described the session page as a shared "virtual room" that should show a live, self-reported
+list of who's here. Anonymity is now the student's own choice, not system-enforced. Either way,
+nothing is persisted: group/signal/name state for students lives ONLY in a Supabase Realtime
+presence channel, never in Postgres, so it's discarded automatically when a room ends — no
+student accounts, no cleanup job needed.
 
 One of three products under the Feedblick umbrella (siblings: `../feedblick-edu`,
 `../feedblick-stars`), sharing an architecture but not a repo, Vercel project, or Supabase
@@ -73,17 +75,18 @@ carry before assuming a code problem.
   break), to-do list editor, group badge editor.
 - **Room display** (projector, unauthenticated): `/display/$code` — big countdown, QR, live
   counts.
-- **Student** (unauthenticated): `/session/$code` — gets a fruit handle, countdown, the three
-  signal buttons, self-assign to a group badge (capped at the badge's `seats`, own choice
-  only — see below), read-only task list with local ticking, a live "who's in this room" list.
-- **Handle capacity** (`src/lib/fruit-handle.ts`): at most `MAX_STUDENTS_PER_FRUIT` (4) students
-  share a given fruit at once — a fresh join fills the lowest free numbered slot for a fruit
-  still under the cap ("Mango 1", "Mango 2", ...), falling back to overflow past the cap only
-  once every fruit is full. Assignment waits for the presence channel's first sync (`synced` on
-  `useRoomPresenceChannel`) so it's deciding against a real snapshot of who's already there, not
-  an empty-by-default one.
-- **Badge capacity**: a badge's `seats` is enforced, not just displayed — `/session/$code` disables
-  a badge once it's at capacity (self excluded, so leaving is always possible).
+- **Student** (unauthenticated): `/session/$code` — laid out as timer (upper-left) and tasks
+  (upper-right), then the three signal buttons, then "You" (a name input + the group badge
+  picker), then a live "In this room" list of everyone's typed name + chosen group. A student
+  types a name (persisted in `sessionStorage` per room so a reload keeps it, debounced
+  `NAME_COMMIT_DELAY_MS` before it's broadcast — see `session.$code.tsx`) and doesn't appear in
+  the shared list at all until they have. Task checkboxes stay local/per-device on purpose —
+  never synced — so one student finishing a task never marks it done for anyone else.
+- **Badge capacity**: a badge's `seats` is enforced, not just displayed — `/session/$code`
+  disables a badge once it's at capacity (self excluded, so leaving is always possible). Group
+  assignment is still self-only: a student can only pick their OWN group, never anyone else's
+  (confirmed intentional both times it came up — see git history for the "shared virtual room"
+  discussion that could have gone the other way).
 - **Realtime**: `src/lib/room-presence.ts` — one presence channel per room code
   (`room:{code}`), shared by all three screens; `src/hooks/use-room.ts` — `postgres_changes`
   subscriptions for the `rooms`/`room_tasks`/`room_badges` tables (the durable, teacher-authored
@@ -97,9 +100,6 @@ carry before assuming a code problem.
 
 ## Known gaps / next up
 
-- **Group assignment is self-assign only — confirmed intentional**, not a placeholder: a
-  student can only choose their own badge, never anyone else's. No peer/drag-onto-a-name
-  assignment is planned.
 - Task reordering (tasks currently only append; no drag-to-reorder).
 - Room list has no pagination/archiving; no code auto-refresh from `/rooms/$roomId` (recreate
   the room if a longer join window is needed than `ROOM_CODE_TTL_MINUTES`, currently 60).
