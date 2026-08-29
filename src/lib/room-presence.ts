@@ -23,9 +23,14 @@ export type PresentStudent = StudentPresence & { presenceKey: string };
 export function useRoomPresenceChannel(roomCode: string | undefined) {
   const [channel, setChannel] = useState<RealtimeChannel | null>(null);
   const [presenceState, setPresenceState] = useState<Record<string, StudentPresence[]>>({});
+  // False until the first "sync" arrives — before that, presenceState is just empty-by-default,
+  // not a real snapshot, and anything gating a decision on "who's already here" (capacity
+  // checks, handle assignment) needs to tell the two apart.
+  const [synced, setSynced] = useState(false);
 
   useEffect(() => {
     if (!roomCode) return;
+    setSynced(false);
     // Keyed by a fresh id per connection, deliberately not by the handle itself — two
     // students can land on the same fruit+number by chance, and this key only needs to be
     // unique per browser tab, never shown to anyone.
@@ -34,6 +39,7 @@ export function useRoomPresenceChannel(roomCode: string | undefined) {
     });
     ch.on("presence", { event: "sync" }, () => {
       setPresenceState(ch.presenceState<StudentPresence>());
+      setSynced(true);
     });
     ch.subscribe();
     setChannel(ch);
@@ -51,7 +57,7 @@ export function useRoomPresenceChannel(roomCode: string | undefined) {
     [presenceState],
   );
 
-  return { channel, students };
+  return { channel, students, synced };
 }
 
 export function trackPresence(channel: RealtimeChannel | null, payload: StudentPresence) {

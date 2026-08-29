@@ -9,6 +9,7 @@ import { useRoomByCode, useRoomBadges, useRoomTasks } from "@/hooks/use-room";
 import {
   useRoomPresenceChannel,
   trackPresence,
+  summarizeByBadge,
   type SignalKind,
   type StudentPresence,
 } from "@/lib/room-presence";
@@ -42,7 +43,7 @@ function JoinRoom() {
   const { room, loading, notFound } = useRoomByCode(code);
   const { tasks } = useRoomTasks(room?.id);
   const { badges } = useRoomBadges(room?.id);
-  const { channel, students } = useRoomPresenceChannel(
+  const { channel, students, synced } = useRoomPresenceChannel(
     room?.status === "active" ? room.code : undefined,
   );
   const timer = useRoomTimerDisplay(room ?? IDLE_TIMER);
@@ -54,9 +55,20 @@ function JoinRoom() {
     signal: null,
   });
 
+  // Waits for `synced` — assigning a handle (or checking badge capacity) off an empty-by-default
+  // presence snapshot would make every room look wide open for the first render.
   useEffect(() => {
-    if (code) setHandle(getOrCreateHandle(code));
-  }, [code]);
+    if (!code || !synced || handle) return;
+    setHandle(
+      getOrCreateHandle(
+        code,
+        students.map((s) => s.handle),
+      ),
+    );
+    // Only ever runs once per room: `handle` in the guard above skips every render after the
+    // first successful assignment, so `students` changing afterward doesn't reassign it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [code, synced]);
 
   // Every own-state change re-announces this client's full presence payload — presence.track()
   // always replaces the whole entry, there's no partial update.
@@ -81,6 +93,11 @@ function JoinRoom() {
   const toggleBadge = (id: string) => {
     setSelf((prev) => ({ ...prev, badgeId: prev.badgeId === id ? null : id }));
   };
+
+  const byBadge = summarizeByBadge(
+    students,
+    badges.map((b) => b.id),
+  );
 
   if (loading) {
     return (
@@ -137,21 +154,30 @@ function JoinRoom() {
         <div>
           <p className="text-sm font-medium mb-2">Your group</p>
           <div className="flex flex-wrap gap-2">
-            {badges.map((b) => (
-              <button
-                key={b.id}
-                onClick={() => toggleBadge(b.id)}
-                className={cn(
-                  "rounded-md border px-3 py-1.5 text-sm",
-                  self.badgeId === b.id
-                    ? "border-primary bg-primary/10 font-medium"
-                    : "text-muted-foreground",
-                )}
-              >
-                {b.name}
-                {b.place ? ` · ${b.place}` : ""}
-              </button>
-            ))}
+            {badges.map((b) => {
+              const occupied = byBadge[b.id]?.total ?? 0;
+              const isSelf = self.badgeId === b.id;
+              const isFull = !isSelf && occupied >= b.seats;
+              return (
+                <button
+                  key={b.id}
+                  disabled={isFull}
+                  onClick={() => toggleBadge(b.id)}
+                  className={cn(
+                    "rounded-md border px-3 py-1.5 text-sm",
+                    isSelf
+                      ? "border-primary bg-primary/10 font-medium"
+                      : isFull
+                        ? "text-muted-foreground/50 cursor-not-allowed"
+                        : "text-muted-foreground",
+                  )}
+                >
+                  {b.name}
+                  {b.place ? ` · ${b.place}` : ""} · {occupied}/{b.seats}
+                  {isFull ? " · full" : ""}
+                </button>
+              );
+            })}
           </div>
         </div>
       )}

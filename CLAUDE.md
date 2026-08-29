@@ -74,8 +74,16 @@ carry before assuming a code problem.
 - **Room display** (projector, unauthenticated): `/display/$code` — big countdown, QR, live
   counts.
 - **Student** (unauthenticated): `/join/$code` — gets a fruit handle, countdown, the three
-  signal buttons, self-assign to a group badge, read-only task list with local ticking, a live
-  "who's in this room" list.
+  signal buttons, self-assign to a group badge (capped at the badge's `seats`, own choice
+  only — see below), read-only task list with local ticking, a live "who's in this room" list.
+- **Handle capacity** (`src/lib/fruit-handle.ts`): at most `MAX_STUDENTS_PER_FRUIT` (4) students
+  share a given fruit at once — a fresh join fills the lowest free numbered slot for a fruit
+  still under the cap ("Mango 1", "Mango 2", ...), falling back to overflow past the cap only
+  once every fruit is full. Assignment waits for the presence channel's first sync (`synced` on
+  `useRoomPresenceChannel`) so it's deciding against a real snapshot of who's already there, not
+  an empty-by-default one.
+- **Badge capacity**: a badge's `seats` is enforced, not just displayed — `/join/$code` disables
+  a badge once it's at capacity (self excluded, so leaving is always possible).
 - **Realtime**: `src/lib/room-presence.ts` — one presence channel per room code
   (`room:{code}`), shared by all three screens; `src/hooks/use-room.ts` — `postgres_changes`
   subscriptions for the `rooms`/`room_tasks`/`room_badges` tables (the durable, teacher-authored
@@ -87,10 +95,9 @@ carry before assuming a code problem.
 
 ## Known gaps / next up
 
-- **Group assignment is self-assign only.** The product idea was any student dragging a badge
-  onto any name (peer-assignment) — Supabase presence only lets a client update its own entry,
-  so that needs a `broadcast`-based shared reducer (with late-join state sync) layered on top.
-  Not built yet; confirm the UX is still wanted before investing in it.
+- **Group assignment is self-assign only — confirmed intentional**, not a placeholder: a
+  student can only choose their own badge, never anyone else's. No peer/drag-onto-a-name
+  assignment is planned.
 - Task reordering (tasks currently only append; no drag-to-reorder).
 - Room list has no pagination/archiving; no code auto-refresh from `/rooms/$roomId` (recreate
   the room if a longer join window is needed than `ROOM_CODE_TTL_MINUTES`, currently 60).
