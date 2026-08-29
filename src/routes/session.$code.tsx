@@ -10,6 +10,7 @@ import { BrandMark } from "@/components/BrandMark";
 import { BackgroundGlow } from "@/components/BackgroundGlow";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { RosterTable } from "@/components/RosterTable";
+import { TaskTable } from "@/components/TaskTable";
 import { cn } from "@/lib/utils";
 import { badgeColor } from "@/lib/badge-colors";
 import { GROUP_FRUITS } from "@/lib/group-fruits";
@@ -157,31 +158,24 @@ function SessionView() {
             <CardTitle className="text-base">Tasks</CardTitle>
           </CardHeader>
           <CardContent>
-            {tasks.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No tasks yet.</p>
-            ) : (
-              <ol className="space-y-3">
-                {tasks.map((t, i) => (
-                  <li key={t.id} className="flex items-center justify-between gap-3">
-                    <label
-                      htmlFor={`task-${t.id}`}
-                      className={cn(
-                        "text-lg",
-                        checked.has(t.id) && "line-through text-muted-foreground",
-                      )}
-                    >
-                      {i + 1}. {t.text}
-                    </label>
-                    <Checkbox
-                      checked={checked.has(t.id)}
-                      onCheckedChange={() => toggleTask(t.id)}
-                      id={`task-${t.id}`}
-                      className="size-5 shrink-0"
-                    />
-                  </li>
-                ))}
-              </ol>
-            )}
+            <TaskTable
+              tasks={tasks}
+              renderText={(t, i) => (
+                <label
+                  htmlFor={`task-${t.id}`}
+                  className={cn(checked.has(t.id) && "line-through text-muted-foreground")}
+                >
+                  {i + 1}. {t.text}
+                </label>
+              )}
+              renderAction={(t) => (
+                <Checkbox
+                  checked={checked.has(t.id)}
+                  onCheckedChange={() => toggleTask(t.id)}
+                  id={`task-${t.id}`}
+                />
+              )}
+            />
           </CardContent>
         </Card>
       </div>

@@ -14,6 +14,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { BrandMark } from "@/components/BrandMark";
 import { BackgroundGlow } from "@/components/BackgroundGlow";
 import { RosterTable } from "@/components/RosterTable";
+import { TaskTable } from "@/components/TaskTable";
 import { FloatingQrPanel } from "@/components/FloatingQrPanel";
 import { sessionUrl, type Room } from "@/lib/room";
 import { badgeColor } from "@/lib/badge-colors";
@@ -227,7 +228,6 @@ function RoomControl() {
             </CardHeader>
             <CardContent className="flex flex-col-reverse items-center gap-6 md:flex-row md:items-center md:justify-between">
               <div className="w-full space-y-4">
-                <p className="text-sm text-muted-foreground">{phaseLabel(timer)}</p>
                 <MinutesStepper
                   label="Focus"
                   minutes={room.focus_minutes}
@@ -239,21 +239,22 @@ function RoomControl() {
                   onChange={(m) => updateRoom({ break_minutes: m })}
                 />
                 <div className="flex flex-wrap gap-2">
-                  <Button onClick={onStartFocus}>Start focus</Button>
-                  <Button variant="outline" onClick={onSkipToBreak}>
-                    Skip to break
-                  </Button>
+                  <Button onClick={onStartFocus}>Start</Button>
                   <Button onClick={onPauseResume} disabled={timer.phase === "idle"}>
                     {timer.isRunning ? "Pause" : "Resume"}
                   </Button>
                   <Button variant="outline" onClick={onReset}>
                     Reset
                   </Button>
+                  <Button variant="outline" onClick={onSkipToBreak}>
+                    Skip to break
+                  </Button>
                 </div>
               </div>
               <TimerWheel
                 remainingSeconds={timer.remainingSeconds}
                 totalSeconds={timer.totalSeconds}
+                label={phaseLabel(timer)}
               />
             </CardContent>
           </Card>
@@ -274,21 +275,17 @@ function RoomControl() {
                   <Plus className="size-4" />
                 </Button>
               </div>
-              <ol className="space-y-1">
-                {tasks.map((t, i) => (
-                  <li key={t.id} className="flex items-center justify-between gap-2 text-sm">
-                    <span>
-                      {i + 1}. {t.text}
-                    </span>
-                    <button
-                      onClick={() => onDeleteTask(t.id)}
-                      className="text-muted-foreground hover:text-destructive"
-                    >
-                      <Trash2 className="size-4" />
-                    </button>
-                  </li>
-                ))}
-              </ol>
+              <TaskTable
+                tasks={tasks}
+                renderAction={(t) => (
+                  <button
+                    onClick={() => onDeleteTask(t.id)}
+                    className="text-muted-foreground hover:text-destructive"
+                  >
+                    <Trash2 className="size-4" />
+                  </button>
+                )}
+              />
             </CardContent>
           </Card>
         </div>
