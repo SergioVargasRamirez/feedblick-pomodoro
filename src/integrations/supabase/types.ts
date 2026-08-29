@@ -63,7 +63,6 @@ export type Database = {
       rooms: {
         Row: {
           code: string;
-          code_expires_at: string;
           created_at: string;
           id: string;
           status: string;
@@ -76,7 +75,6 @@ export type Database = {
         };
         Insert: {
           code: string;
-          code_expires_at: string;
           created_at?: string;
           id?: string;
           status?: string;
@@ -89,7 +87,6 @@ export type Database = {
         };
         Update: {
           code?: string;
-          code_expires_at?: string;
           created_at?: string;
           id?: string;
           status?: string;

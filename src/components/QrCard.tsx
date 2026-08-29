@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 // still scans reliably when projected small or viewed at an angle.
 const QR_OPTIONS = { width: 480, margin: 1, errorCorrectionLevel: "H" } as const;
 
-function useQrDataUrl(url: string): string {
+export function useQrDataUrl(url: string): string {
   const [dataUrl, setDataUrl] = useState("");
   useEffect(() => {
     if (!url) return;

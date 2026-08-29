@@ -11,6 +11,7 @@ import { RosterTable } from "@/components/RosterTable";
 import { cn } from "@/lib/utils";
 import { badgeColor } from "@/lib/badge-colors";
 import { GROUP_FRUITS } from "@/lib/group-fruits";
+import { SIGNAL_LABEL, SIGNAL_STYLES } from "@/lib/signal-styles";
 import { useRoomByCode, useRoomTasks } from "@/hooks/use-room";
 import {
   useRoomPresenceChannel,
@@ -36,26 +37,7 @@ const IDLE_TIMER = {
   timer_round: 1,
 };
 
-const SIGNALS: { kind: SignalKind; label: string }[] = [
-  { kind: "done", label: "Done" },
-  { kind: "stuck", label: "Stuck" },
-  { kind: "need2min", label: "Need 2 min" },
-];
-
-const SIGNAL_STYLES: Record<SignalKind, { idle: string; active: string }> = {
-  done: {
-    idle: "border-emerald-500/40 text-emerald-700 dark:text-emerald-400",
-    active: "border-emerald-500 bg-emerald-500 text-white",
-  },
-  stuck: {
-    idle: "border-red-500/40 text-red-700 dark:text-red-400",
-    active: "border-red-500 bg-red-500 text-white",
-  },
-  need2min: {
-    idle: "border-amber-500/40 text-amber-700 dark:text-amber-400",
-    active: "border-amber-500 bg-amber-500 text-white",
-  },
-};
+const SIGNALS: SignalKind[] = ["done", "stuck", "need2min"];
 
 // A student's own typed name is debounced before it's broadcast (and before they show up in
 // the shared list at all) so the room isn't re-tracking presence on every keystroke.
@@ -198,7 +180,7 @@ function SessionView() {
       <div>
         <p className="text-sm font-medium mb-2">How's it going?</p>
         <div className="grid grid-cols-3 gap-2">
-          {SIGNALS.map(({ kind, label }) => (
+          {SIGNALS.map((kind) => (
             <button
               key={kind}
               onClick={() => toggleSignal(kind)}
@@ -207,7 +189,7 @@ function SessionView() {
                 self.signal === kind ? SIGNAL_STYLES[kind].active : SIGNAL_STYLES[kind].idle,
               )}
             >
-              {label}
+              {SIGNAL_LABEL[kind]}
             </button>
           ))}
         </div>

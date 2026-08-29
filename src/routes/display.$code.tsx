@@ -2,10 +2,11 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Card, CardContent } from "@/components/ui/card";
 import { QrCard } from "@/components/QrCard";
 import { BrandMark } from "@/components/BrandMark";
+import { SignalMeter } from "@/components/SignalMeter";
 import { sessionUrl } from "@/lib/room";
 import { useRoomByCode } from "@/hooks/use-room";
 import { useRoomPresenceChannel, summarizeSignals } from "@/lib/room-presence";
-import { useCountdown, formatRemaining } from "@/lib/countdown";
+import { formatRemaining } from "@/lib/countdown";
 import { useRoomTimerDisplay } from "@/lib/timer";
 
 export const Route = createFileRoute("/display/$code")({
@@ -28,7 +29,6 @@ function RoomDisplay() {
   const { code } = Route.useParams();
   const { room, loading, notFound } = useRoomByCode(code);
   const { students } = useRoomPresenceChannel(room?.code);
-  const expiresIn = useCountdown(room?.code_expires_at);
   const timer = useRoomTimerDisplay(room ?? IDLE_TIMER);
   const counts = summarizeSignals(students);
 
@@ -63,19 +63,20 @@ function RoomDisplay() {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 w-full max-w-2xl">
+      <div className="flex flex-wrap items-center justify-center gap-6">
         <DisplayStat label="In room" value={counts.total} />
-        <DisplayStat label="Done" value={counts.done} />
-        <DisplayStat label="Stuck" value={counts.stuck} />
-        <DisplayStat label="Need 2 min" value={counts.need2min} />
+        <SignalMeter kind="done" count={counts.done} total={counts.total} label="Done" />
+        <SignalMeter kind="stuck" count={counts.stuck} total={counts.total} label="Stuck" />
+        <SignalMeter
+          kind="need2min"
+          count={counts.need2min}
+          total={counts.total}
+          label="Need 2 min"
+        />
       </div>
 
-      {room.status === "active" && isFinite(expiresIn) && expiresIn > 0 && (
-        <QrCard
-          url={sessionUrl(room.code)}
-          title={`Join code: ${room.code}`}
-          description={`Expires in ${formatRemaining(expiresIn)}`}
-        />
+      {room.status === "active" && (
+        <QrCard url={sessionUrl(room.code)} title={`Join code: ${room.code}`} />
       )}
     </div>
   );

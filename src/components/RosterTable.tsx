@@ -11,13 +11,22 @@ import { ChevronUp, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { badgeColor } from "@/lib/badge-colors";
 import { GROUP_FRUITS } from "@/lib/group-fruits";
+import { SIGNAL_LABEL, SIGNAL_STYLES } from "@/lib/signal-styles";
 import type { PresentStudent } from "@/lib/room-presence";
 
 type SortField = "name" | "group";
 
 // Shared between the student session page and the teacher panel — "I want to see the same
 // table of students/groups the students see" — one component, not two copies that could drift.
-export function RosterTable({ students }: { students: PresentStudent[] }) {
+// `showSignal` is teacher-panel-only ("I want to see who pressed what in the table as a
+// badge") — the student view doesn't pass it, so the roster there stays Name/Group only.
+export function RosterTable({
+  students,
+  showSignal = false,
+}: {
+  students: PresentStudent[];
+  showSignal?: boolean;
+}) {
   const [sortBy, setSortBy] = useState<SortField>("name");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
@@ -72,6 +81,7 @@ export function RosterTable({ students }: { students: PresentStudent[] }) {
               onSort={toggleSort}
             />
           </TableHead>
+          {showSignal && <TableHead>Signal</TableHead>}
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -93,6 +103,22 @@ export function RosterTable({ students }: { students: PresentStudent[] }) {
                 <span className="text-muted-foreground">—</span>
               )}
             </TableCell>
+            {showSignal && (
+              <TableCell>
+                {s.signal ? (
+                  <span
+                    className={cn(
+                      "inline-flex rounded-full border px-2.5 py-0.5 text-xs font-medium",
+                      SIGNAL_STYLES[s.signal].active,
+                    )}
+                  >
+                    {SIGNAL_LABEL[s.signal]}
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground">—</span>
+                )}
+              </TableCell>
+            )}
           </TableRow>
         ))}
       </TableBody>

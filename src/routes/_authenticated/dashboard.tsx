@@ -7,7 +7,7 @@ import { BackgroundGlow } from "@/components/BackgroundGlow";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { supabase } from "@/integrations/supabase/client";
 import { generateRoomCode } from "@/lib/room-code";
-import { ROOM_CODE_TTL_MINUTES, type Room } from "@/lib/room";
+import type { Room } from "@/lib/room";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -25,11 +25,7 @@ async function createRoom(teacherId: string): Promise<Room> {
     const code = generateRoomCode();
     const { data, error } = await supabase
       .from("rooms")
-      .insert({
-        teacher_id: teacherId,
-        code,
-        code_expires_at: new Date(Date.now() + ROOM_CODE_TTL_MINUTES * 60_000).toISOString(),
-      })
+      .insert({ teacher_id: teacherId, code })
       .select()
       .single();
     if (!error) return data;
