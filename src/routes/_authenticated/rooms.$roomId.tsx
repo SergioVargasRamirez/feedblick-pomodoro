@@ -267,10 +267,12 @@ function RoomControl() {
                   <Plus className="size-4" />
                 </Button>
               </div>
-              <ul className="space-y-1">
-                {tasks.map((t) => (
+              <ol className="space-y-1">
+                {tasks.map((t, i) => (
                   <li key={t.id} className="flex items-center justify-between gap-2 text-sm">
-                    <span>{t.text}</span>
+                    <span>
+                      {i + 1}. {t.text}
+                    </span>
                     <button
                       onClick={() => onDeleteTask(t.id)}
                       className="text-muted-foreground hover:text-destructive"
@@ -279,7 +281,7 @@ function RoomControl() {
                     </button>
                   </li>
                 ))}
-              </ul>
+              </ol>
             </CardContent>
           </Card>
 
@@ -353,12 +355,15 @@ function CopyLinkButton({ url }: { url: string }) {
   };
 
   return (
-    <div className="flex items-center gap-2 w-full">
-      <Input readOnly value={url} className="text-xs" onFocus={(e) => e.currentTarget.select()} />
-      <Button type="button" variant="outline" size="sm" onClick={onCopy}>
-        {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
-      </Button>
-    </div>
+    <button
+      type="button"
+      onClick={onCopy}
+      title={url}
+      className="flex max-w-56 items-center gap-1.5 text-xs text-primary underline underline-offset-2 hover:text-primary/80"
+    >
+      <span className="truncate">{url}</span>
+      {copied ? <Check className="size-3.5 shrink-0" /> : <Copy className="size-3.5 shrink-0" />}
+    </button>
   );
 }
 

@@ -185,8 +185,8 @@ function JoinRoom() {
       {tasks.length > 0 && (
         <div>
           <p className="text-sm font-medium mb-2">Tasks</p>
-          <ul className="space-y-2">
-            {tasks.map((t) => (
+          <ol className="space-y-2">
+            {tasks.map((t, i) => (
               <li key={t.id} className="flex items-center gap-2">
                 <Checkbox
                   checked={checked.has(t.id)}
@@ -200,11 +200,11 @@ function JoinRoom() {
                     checked.has(t.id) && "line-through text-muted-foreground",
                   )}
                 >
-                  {t.text}
+                  {i + 1}. {t.text}
                 </label>
               </li>
             ))}
-          </ul>
+          </ol>
         </div>
       )}
 

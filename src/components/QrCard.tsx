@@ -42,21 +42,19 @@ export function QrCard({
 
   return (
     <Card className={cn("flex flex-col", className)}>
-      <CardContent className="flex-1 pt-6 flex flex-col md:flex-row gap-6 items-center justify-center">
-        {dataUrl && <img src={dataUrl} alt="Room join QR code" className="size-56 shrink-0" />}
-        <div className="max-w-xs space-y-3 text-center md:text-left">
-          {(title || description) && (
-            <div>
-              {title && <h3 className="text-lg font-semibold">{title}</h3>}
-              {description && <p className="text-sm text-muted-foreground">{description}</p>}
-            </div>
-          )}
-          {actions && (
-            <div className="flex items-center gap-2 flex-wrap justify-center md:justify-start">
-              {actions}
-            </div>
-          )}
-        </div>
+      <CardContent className="flex-1 pt-6 flex flex-col md:flex-row gap-6 items-center md:items-start justify-center">
+        {dataUrl && (
+          <div className="flex flex-col items-center gap-3 shrink-0">
+            <img src={dataUrl} alt="Room join QR code" className="size-56" />
+            {actions}
+          </div>
+        )}
+        {(title || description) && (
+          <div className="max-w-xs space-y-1 text-center md:text-left">
+            {title && <h3 className="text-lg font-semibold">{title}</h3>}
+            {description && <p className="text-sm text-muted-foreground">{description}</p>}
+          </div>
+        )}
       </CardContent>
     </Card>
   );
