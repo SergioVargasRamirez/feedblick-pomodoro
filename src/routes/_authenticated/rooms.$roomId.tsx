@@ -5,20 +5,22 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
-import { ArrowLeft, Copy, Check, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Copy, Check, ExternalLink, Plus, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { QrCard } from "@/components/QrCard";
 import { TimerWheel } from "@/components/TimerWheel";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { BrandMark } from "@/components/BrandMark";
 import { BackgroundGlow } from "@/components/BackgroundGlow";
+import { RosterTable } from "@/components/RosterTable";
 import { sessionUrl, type Room } from "@/lib/room";
 import { badgeColor } from "@/lib/badge-colors";
+import { GROUP_FRUITS } from "@/lib/group-fruits";
 import { cn } from "@/lib/utils";
-import { useRoom, useRoomBadges, useRoomTasks } from "@/hooks/use-room";
+import { useRoom, useRoomTasks } from "@/hooks/use-room";
 import {
   useRoomPresenceChannel,
-  summarizeByBadge,
+  summarizeByFruit,
   summarizeSignals,
   type SignalKind,
 } from "@/lib/room-presence";
@@ -47,17 +49,22 @@ const SIGNAL_LABEL: Record<SignalKind, string> = {
   need2min: "Need 2 min",
 };
 
+// A named window: clicking the button again re-focuses the same popped-out window instead of
+// opening a second one. Explicit width/height (rather than a bare "_blank") is what makes most
+// browsers give a separate, draggable floating window instead of a new tab — the point being to
+// drag this onto a projector while the room panel stays on the teacher's own screen.
+function openDisplayWindow(url: string) {
+  const win = window.open(url, "feedblick-display", "noopener,noreferrer,width=480,height=720");
+  if (!win) toast.error("Pop-up blocked — allow pop-ups for this site to open the display window.");
+}
+
 function RoomControl() {
   const { roomId } = Route.useParams();
   const { room, loading } = useRoom(roomId);
   const { tasks } = useRoomTasks(roomId);
-  const { badges } = useRoomBadges(roomId);
   const { students } = useRoomPresenceChannel(room?.code);
   const [drillSignal, setDrillSignal] = useState<SignalKind | null>(null);
   const [newTask, setNewTask] = useState("");
-  const [newBadgeName, setNewBadgeName] = useState("");
-  const [newBadgePlace, setNewBadgePlace] = useState("");
-  const [newBadgeSeats, setNewBadgeSeats] = useState("4");
 
   const expiresIn = useCountdown(room?.code_expires_at);
   // Hooks must run unconditionally every render, so this runs against a fallback idle shape
@@ -82,9 +89,9 @@ function RoomControl() {
   }
 
   const signalCounts = summarizeSignals(students);
-  const byBadge = summarizeByBadge(
+  const byFruit = summarizeByFruit(
     students,
-    badges.map((b) => b.id),
+    GROUP_FRUITS.map((f) => f.id),
   );
 
   const updateTimer = async (patch: Partial<Room>) => {
@@ -119,26 +126,6 @@ function RoomControl() {
     if (error) toast.error(error.message);
   };
 
-  const onAddBadge = async () => {
-    const name = newBadgeName.trim();
-    if (!name) return;
-    const seats = Number.parseInt(newBadgeSeats, 10) || 4;
-    const { error } = await supabase
-      .from("room_badges")
-      .insert({ room_id: room.id, name, place: newBadgePlace.trim(), seats });
-    if (error) toast.error(error.message);
-    else {
-      setNewBadgeName("");
-      setNewBadgePlace("");
-      setNewBadgeSeats("4");
-    }
-  };
-
-  const onDeleteBadge = async (id: string) => {
-    const { error } = await supabase.from("room_badges").delete().eq("id", id);
-    if (error) toast.error(error.message);
-  };
-
   return (
     <div className="relative isolate min-h-screen bg-background">
       <BackgroundGlow />
@@ -170,100 +157,41 @@ function RoomControl() {
 
       <main className="max-w-5xl mx-auto px-6 py-8 space-y-6">
         <div className="grid gap-6 md:grid-cols-2">
-          <QrCard
-            url={sessionUrl(room.code)}
-            title="Students join here"
-            description={
-              room.status === "active"
-                ? isFinite(expiresIn)
-                  ? `Code expires in ${formatRemaining(expiresIn)}`
-                  : "Code expired — students can no longer join."
-                : "Room ended."
-            }
-            actions={<CopyLinkButton url={sessionUrl(room.code)} />}
-          />
-
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Live counts</CardTitle>
+              <CardTitle className="text-base">Timer</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="grid grid-cols-2 gap-2">
-                <StatTile label="In room" value={signalCounts.total} />
-                {(["done", "stuck", "need2min"] as SignalKind[]).map((kind) => (
-                  <button
-                    key={kind}
-                    onClick={() => setDrillSignal(drillSignal === kind ? null : kind)}
-                    className="text-left"
-                  >
-                    <StatTile
-                      label={SIGNAL_LABEL[kind]}
-                      value={signalCounts[kind]}
-                      active={drillSignal === kind}
-                    />
-                  </button>
-                ))}
-              </div>
-              {drillSignal && (
-                <div className="border-t pt-3 space-y-1 text-sm">
-                  {badges.map((b, i) => (
-                    <div key={b.id} className="flex justify-between">
-                      <span className="flex items-center gap-1.5 text-muted-foreground">
-                        <span className={cn("size-2 rounded-full", badgeColor(i).dot)} />
-                        {b.name}
-                        {b.place ? ` · ${b.place}` : ""}
-                      </span>
-                      <span className="font-medium">{byBadge[b.id]?.[drillSignal] ?? 0}</span>
-                    </div>
+            <CardContent className="flex flex-col-reverse items-center gap-6 md:flex-row md:items-center md:justify-between">
+              <div className="w-full space-y-4">
+                <p className="text-sm text-muted-foreground capitalize">
+                  {timer.phase} · round {timer.round}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {FOCUS_PRESET_MINUTES.map((m) => (
+                    <Button key={m} variant="outline" size="sm" onClick={() => onStartFocus(m)}>
+                      {m}m focus
+                    </Button>
                   ))}
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Unassigned</span>
-                    <span className="font-medium">
-                      {students.filter((s) => !s.badgeId && s.signal === drillSignal).length}
-                    </span>
-                  </div>
+                  <Button variant="outline" size="sm" onClick={onSkipToBreak}>
+                    Skip to {BREAK_MINUTES}m break
+                  </Button>
                 </div>
-              )}
+                <div className="flex gap-2">
+                  <Button onClick={onPauseResume} disabled={timer.phase === "idle"}>
+                    {timer.isRunning ? "Pause" : "Resume"}
+                  </Button>
+                  <Button variant="outline" onClick={onReset}>
+                    Reset
+                  </Button>
+                </div>
+              </div>
+              <TimerWheel
+                remainingSeconds={timer.remainingSeconds}
+                totalSeconds={timer.totalSeconds}
+              />
             </CardContent>
           </Card>
-        </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Timer</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col-reverse items-center gap-6 md:flex-row md:items-center md:justify-between">
-            <div className="w-full space-y-4">
-              <p className="text-sm text-muted-foreground capitalize">
-                {timer.phase} · round {timer.round}
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {FOCUS_PRESET_MINUTES.map((m) => (
-                  <Button key={m} variant="outline" size="sm" onClick={() => onStartFocus(m)}>
-                    {m}m focus
-                  </Button>
-                ))}
-                <Button variant="outline" size="sm" onClick={onSkipToBreak}>
-                  Skip to {BREAK_MINUTES}m break
-                </Button>
-              </div>
-              <div className="flex gap-2">
-                <Button onClick={onPauseResume} disabled={timer.phase === "idle"}>
-                  {timer.isRunning ? "Pause" : "Resume"}
-                </Button>
-                <Button variant="outline" onClick={onReset}>
-                  Reset
-                </Button>
-              </div>
-            </div>
-            <TimerWheel
-              remainingSeconds={timer.remainingSeconds}
-              totalSeconds={timer.totalSeconds}
-            />
-          </CardContent>
-        </Card>
-
-        <div className="grid gap-6 md:grid-cols-2">
           <Card>
             <CardHeader>
               <CardTitle className="text-base">To-do list</CardTitle>
@@ -297,63 +225,88 @@ function RoomControl() {
               </ol>
             </CardContent>
           </Card>
+        </div>
+
+        <div className="grid gap-6 md:grid-cols-2">
+          <QrCard
+            url={sessionUrl(room.code)}
+            title="Students join here"
+            description={
+              room.status === "active"
+                ? isFinite(expiresIn)
+                  ? `Code expires in ${formatRemaining(expiresIn)}`
+                  : "Code expired — students can no longer join."
+                : "Room ended."
+            }
+            actions={
+              <div className="flex flex-col items-center gap-2">
+                <CopyLinkButton url={sessionUrl(room.code)} />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() =>
+                    openDisplayWindow(`${window.location.origin}/display/${room.code}`)
+                  }
+                >
+                  <ExternalLink className="size-4 mr-1" /> Open projector display
+                </Button>
+              </div>
+            }
+          />
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Group badges</CardTitle>
+              <CardTitle className="text-base">Live counts</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <div className="grid grid-cols-3 gap-2">
-                <Input
-                  className="col-span-1"
-                  value={newBadgeName}
-                  onChange={(e) => setNewBadgeName(e.target.value)}
-                  placeholder="Group 2"
-                />
-                <Input
-                  className="col-span-2"
-                  value={newBadgePlace}
-                  onChange={(e) => setNewBadgePlace(e.target.value)}
-                  placeholder="By the door"
-                  onKeyDown={(e) => e.key === "Enter" && onAddBadge()}
-                />
-              </div>
-              <div className="flex gap-2">
-                <Input
-                  type="number"
-                  min={1}
-                  className="w-24"
-                  value={newBadgeSeats}
-                  onChange={(e) => setNewBadgeSeats(e.target.value)}
-                />
-                <Button variant="outline" onClick={onAddBadge}>
-                  <Plus className="size-4 mr-1" /> Add badge
-                </Button>
-              </div>
-              <ul className="space-y-1">
-                {badges.map((b, i) => (
-                  <li key={b.id} className="flex items-center justify-between gap-2 text-sm">
-                    <span className="flex items-center gap-1.5">
-                      <span className={cn("size-2 shrink-0 rounded-full", badgeColor(i).dot)} />
-                      {b.name}
-                      {b.place ? ` · ${b.place}` : ""} · {b.seats} seats
-                      {" — "}
-                      <span className="text-muted-foreground">
-                        {byBadge[b.id]?.total ?? 0} here
-                      </span>
-                    </span>
-                    <button
-                      onClick={() => onDeleteBadge(b.id)}
-                      className="text-muted-foreground hover:text-destructive"
-                    >
-                      <Trash2 className="size-4" />
-                    </button>
-                  </li>
+              <div className="grid grid-cols-2 gap-2">
+                <StatTile label="In room" value={signalCounts.total} />
+                {(["done", "stuck", "need2min"] as SignalKind[]).map((kind) => (
+                  <button
+                    key={kind}
+                    onClick={() => setDrillSignal(drillSignal === kind ? null : kind)}
+                    className="text-left"
+                  >
+                    <StatTile
+                      label={SIGNAL_LABEL[kind]}
+                      value={signalCounts[kind]}
+                      active={drillSignal === kind}
+                    />
+                  </button>
                 ))}
-              </ul>
+              </div>
+              {drillSignal && (
+                <div className="border-t pt-3 space-y-1 text-sm">
+                  {GROUP_FRUITS.map((f, i) => (
+                    <div key={f.id} className="flex justify-between">
+                      <span className="flex items-center gap-1.5 text-muted-foreground">
+                        <span className={cn("size-2 rounded-full", badgeColor(i).dot)} />
+                        <span aria-hidden="true">{f.emoji}</span>
+                        {f.label}
+                      </span>
+                      <span className="font-medium">{byFruit[f.id]?.[drillSignal] ?? 0}</span>
+                    </div>
+                  ))}
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Unassigned</span>
+                    <span className="font-medium">
+                      {students.filter((s) => !s.fruit && s.signal === drillSignal).length}
+                    </span>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Students &amp; groups</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <RosterTable students={students} />
+          </CardContent>
+        </Card>
       </main>
     </div>
   );

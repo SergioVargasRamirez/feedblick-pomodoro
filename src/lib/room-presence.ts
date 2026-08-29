@@ -6,7 +6,8 @@ export type SignalKind = "done" | "stuck" | "need2min";
 
 export type StudentPresence = {
   name: string;
-  badgeId: string | null;
+  // A GROUP_FRUITS id (src/lib/group-fruits.ts), or null before a student has picked one.
+  fruit: string | null;
   signal: SignalKind | null;
 };
 
@@ -75,18 +76,18 @@ export function summarizeSignals(students: StudentPresence[]): SignalCounts {
   return counts;
 }
 
-// Per-badge breakdown for the teacher's "tap a signal tile to see per-group counts" drill-down
+// Per-fruit breakdown for the teacher's "tap a signal tile to see per-group counts" drill-down
 // — aggregated only, no student name ever surfaces here.
-export function summarizeByBadge(
+export function summarizeByFruit(
   students: StudentPresence[],
-  badgeIds: string[],
+  fruitIds: string[],
 ): Record<string, SignalCounts> {
-  const byBadge: Record<string, SignalCounts> = {};
-  for (const id of badgeIds) byBadge[id] = { total: 0, done: 0, stuck: 0, need2min: 0 };
+  const byFruit: Record<string, SignalCounts> = {};
+  for (const id of fruitIds) byFruit[id] = { total: 0, done: 0, stuck: 0, need2min: 0 };
   for (const s of students) {
-    if (!s.badgeId || !byBadge[s.badgeId]) continue;
-    byBadge[s.badgeId].total++;
-    if (s.signal) byBadge[s.badgeId][s.signal]++;
+    if (!s.fruit || !byFruit[s.fruit]) continue;
+    byFruit[s.fruit].total++;
+    if (s.signal) byFruit[s.fruit][s.signal]++;
   }
-  return byBadge;
+  return byFruit;
 }

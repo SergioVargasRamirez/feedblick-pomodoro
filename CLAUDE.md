@@ -11,12 +11,14 @@ individual.
 
 Teacher identity is a normal Supabase Auth account. Student identity is intentionally NOT an
 account: a student types their own name/nickname/codename on `/session/$code` — revised
-2026-08-29 away from an earlier auto-assigned-fruit-handle design (see git history) once Sergio
+2026-08-29 away from an earlier auto-assigned-fruit-HANDLE design (see git history) once Sergio
 described the session page as a shared "virtual room" that should show a live, self-reported
-list of who's here. Anonymity is now the student's own choice, not system-enforced. Either way,
-nothing is persisted: group/signal/name state for students lives ONLY in a Supabase Realtime
-presence channel, never in Postgres, so it's discarded automatically when a room ends — no
-student accounts, no cleanup job needed.
+list of who's here. Anonymity is now the student's own choice, not system-enforced. (Fruits came
+back the very next day, 2026-08-30, in an unrelated role — as the fixed set of GROUP badges, not
+student identity; don't conflate the two, they solve different problems.) Nothing is persisted
+either way: group/signal/name state for students lives ONLY in a Supabase Realtime presence
+channel, never in Postgres, so it's discarded automatically when a room ends — no student
+accounts, no cleanup job needed.
 
 One of three products under the Feedblick umbrella (siblings: `../feedblick-edu`,
 `../feedblick-stars`), sharing an architecture but not a repo, Vercel project, or Supabase
@@ -60,37 +62,51 @@ carry before assuming a code problem.
 
 - App shell: root route/theme bootstrap, home page, teacher auth (sign in/up, check-email,
   reset-password), an `/_authenticated` route guard.
-- **Schema** (`supabase/migrations/20260829180000_rooms.sql`): `rooms` (code, expiry, status,
-  and timer state columns — `timer_phase`/`timer_target_at`/`timer_remaining_seconds`/
-  `timer_duration_seconds`/`timer_round`), `room_tasks`, `room_badges`. RLS: the owning teacher
-  has full CRUD; anon/authenticated get read-only access to a room (and its tasks/badges) only
-  while `status = 'active' and code_expires_at > now()` — the join code itself is the access
-  control, same trust model as a Kahoot-style code. Per-student state (handle, group, signal)
-  is deliberately NOT a table — see the presence note above. Table-level `GRANT`s are required
-  alongside the RLS policies (Postgres won't evaluate policies without them) — verified against
-  a real local Supabase instance via REST (teacher CRUD, anon read of active rooms, anon blocked
-  from writes, ended/expired rooms invisible to anon, teacher still sees their own ended rooms).
-- **Teacher**: `/dashboard` (room list + create), `/rooms/$roomId` — QR + join-code expiry, live
-  counts with a per-badge signal drill-down, timer controls (presets, pause/resume/reset/skip to
-  break), to-do list editor, group badge editor.
+- **Schema** (`supabase/migrations/20260829180000_rooms.sql`, `..._drop_room_badges.sql`):
+  `rooms` (code, expiry, status, and timer state columns —
+  `timer_phase`/`timer_target_at`/`timer_remaining_seconds`/`timer_duration_seconds`/
+  `timer_round`), `room_tasks`. RLS: the owning teacher has full CRUD; anon/authenticated get
+  read-only access to a room (and its tasks) only while `status = 'active' and code_expires_at >
+  now()` — the join code itself is the access control, same trust model as a Kahoot-style code.
+  Per-student state (name, group, signal) is deliberately NOT a table — see the presence note
+  below. Table-level `GRANT`s are required alongside the RLS policies (Postgres won't evaluate
+  policies without them) — verified against a real local Supabase instance via REST (teacher
+  CRUD, anon read of active rooms, anon blocked from writes, ended/expired rooms invisible to
+  anon, teacher still sees their own ended rooms). `room_badges` existed briefly (teacher-created
+  badges with name/place/seats) and was dropped 2026-08-30 — see below.
+- **Group badges — revised 2026-08-30, no longer teacher-created**: a fixed, always-available
+  set of 8 fruit-emoji badges (`src/lib/group-fruits.ts`: pineapple, watermelon, banana, apple,
+  orange, avocado, lime, cherry), the same 8 in every room. A student picks one for themself —
+  still self-only, never someone else's (confirmed intentional multiple times — see git
+  history). No capacity/seats concept anymore (the old `room_badges.seats` cap was dropped along
+  with the table; nothing currently stops every student picking the same fruit).
+- **Roster table** (`src/components/RosterTable.tsx`): a sortable Name/Group table — click a
+  column header to sort, click again to reverse, unassigned students always sort last. Shared
+  verbatim between the teacher panel and `/session/$code` ("I want to see the same table of
+  students/groups the students see") rather than two copies that could drift. The header buttons
+  fill their whole `<th>` (padding zeroed on the cell, moved onto the button) — earlier they only
+  wrapped the label text tightly, so clicking the header's padding around the text did nothing.
+- **Teacher** (`/rooms/$roomId`): laid out top-to-bottom as Timer (upper-left) + To-do list
+  (upper-right), then QR/join-link + live counts (with a per-fruit signal drill-down), then the
+  roster table. An "Open projector display" button (in the QR card's actions) pops
+  `/display/$code` into a separate, named, explicitly-sized browser window
+  (`openDisplayWindow` in `rooms.$roomId.tsx`) rather than a new tab — meant to be dragged onto a
+  projector while the room panel stays on the teacher's own screen; same `window.open(url, name,
+  "width=...,height=...")` pattern as `feedblick-edu`'s `openLiveDashboard.ts`, which also falls
+  back to a toast if the popup is blocked.
 - **Room display** (projector, unauthenticated): `/display/$code` — big countdown, QR, live
-  counts.
-- **Student** (unauthenticated): `/session/$code` — laid out as timer (upper-left) and tasks
-  (upper-right), then the three signal buttons, then "You" (a name input + the group badge
-  picker), then a live "In this room" list of everyone's typed name + chosen group. A student
-  types a name (persisted in `sessionStorage` per room so a reload keeps it, debounced
-  `NAME_COMMIT_DELAY_MS` before it's broadcast — see `session.$code.tsx`) and doesn't appear in
-  the shared list at all until they have. Task checkboxes stay local/per-device on purpose —
-  never synced — so one student finishing a task never marks it done for anyone else.
-- **Badge capacity**: a badge's `seats` is enforced, not just displayed — `/session/$code`
-  disables a badge once it's at capacity (self excluded, so leaving is always possible). Group
-  assignment is still self-only: a student can only pick their OWN group, never anyone else's
-  (confirmed intentional both times it came up — see git history for the "shared virtual room"
-  discussion that could have gone the other way).
+  counts. No `BackgroundGlow` here on purpose (a soft blur competing with a large-print countdown
+  across a room didn't serve the same "landing page" feel the glow was for elsewhere).
+- **Student** (unauthenticated): `/session/$code` — timer (upper-left) and tasks (upper-right),
+  then the three signal buttons, then "You" (a name input + the fixed fruit-badge picker), then
+  the roster table. A student types a name (persisted in `sessionStorage` per room so a reload
+  keeps it, debounced `NAME_COMMIT_DELAY_MS` before it's broadcast) and doesn't appear in the
+  roster at all until they have. Task checkboxes stay local/per-device on purpose — never
+  synced — so one student finishing a task never marks it done for anyone else.
 - **Realtime**: `src/lib/room-presence.ts` — one presence channel per room code
   (`room:{code}`), shared by all three screens; `src/hooks/use-room.ts` — `postgres_changes`
-  subscriptions for the `rooms`/`room_tasks`/`room_badges` tables (the durable, teacher-authored
-  data), reusing the edu/stars pattern as planned.
+  subscriptions for the `rooms`/`room_tasks` tables (the durable, teacher-authored data), reusing
+  the edu/stars pattern as planned.
 - **Timer**: `src/lib/timer.ts` — pure `build*` functions (`buildStartFocus`, `buildStartBreak`,
   `buildPause`, `buildResume`, `buildReset`) return the DB patch to send; `useRoomTimerDisplay`
   renders it, reusing `countdown.ts`'s target-timestamp pattern while running and a static

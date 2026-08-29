@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import type { Room, RoomBadge, RoomTask } from "@/lib/room";
+import type { Room, RoomTask } from "@/lib/room";
 
 // Teacher-side: fetch by id, RLS lets the owner read regardless of status/expiry.
 export function useRoom(roomId: string | undefined) {
@@ -87,30 +87,25 @@ export function useRoomByCode(code: string | undefined) {
   return { room, loading, notFound };
 }
 
-// Shared shape behind useRoomTasks/useRoomBadges below: fetch all rows for a room, refetch
-// whenever any insert/update/delete on that table for this room comes through. Refetch-the-set
-// rather than patching individual events — both lists are short (a class's worth of tasks or
-// badges), so simplicity wins over incremental-update bookkeeping.
-function useRoomRows<T>(
-  roomId: string | undefined,
-  table: "room_tasks" | "room_badges",
-  orderBy: string,
-) {
-  const [rows, setRows] = useState<T[]>([]);
+// Fetch a room's tasks, refetching whenever any insert/update/delete on room_tasks for this
+// room comes through. Refetch-the-set rather than patching individual events — the list is
+// short (a class's worth of tasks), so simplicity wins over incremental-update bookkeeping.
+export function useRoomTasks(roomId: string | undefined) {
+  const [tasks, setTasks] = useState<RoomTask[]>([]);
   const [loading, setLoading] = useState(true);
 
   const refetch = useCallback(() => {
     if (!roomId) return;
     supabase
-      .from(table)
+      .from("room_tasks")
       .select("*")
       .eq("room_id", roomId)
-      .order(orderBy)
+      .order("position")
       .then(({ data }) => {
-        setRows((data ?? []) as T[]);
+        setTasks(data ?? []);
         setLoading(false);
       });
-  }, [roomId, table, orderBy]);
+  }, [roomId]);
 
   useEffect(() => {
     refetch();
@@ -119,27 +114,17 @@ function useRoomRows<T>(
   useEffect(() => {
     if (!roomId) return;
     const channel = supabase
-      .channel(`${table}-${roomId}`)
+      .channel(`room_tasks-${roomId}`)
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table, filter: `room_id=eq.${roomId}` },
+        { event: "*", schema: "public", table: "room_tasks", filter: `room_id=eq.${roomId}` },
         () => refetch(),
       )
       .subscribe();
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [roomId, table, refetch]);
+  }, [roomId, refetch]);
 
-  return { rows, loading, refetch };
-}
-
-export function useRoomTasks(roomId: string | undefined) {
-  const { rows, loading } = useRoomRows<RoomTask>(roomId, "room_tasks", "position");
-  return { tasks: rows, loading };
-}
-
-export function useRoomBadges(roomId: string | undefined) {
-  const { rows, loading } = useRoomRows<RoomBadge>(roomId, "room_badges", "created_at");
-  return { badges: rows, loading };
+  return { tasks, loading };
 }

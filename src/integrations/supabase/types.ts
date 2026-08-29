@@ -28,41 +28,6 @@ export type Database = {
   };
   public: {
     Tables: {
-      room_badges: {
-        Row: {
-          created_at: string;
-          id: string;
-          name: string;
-          place: string;
-          room_id: string;
-          seats: number;
-        };
-        Insert: {
-          created_at?: string;
-          id?: string;
-          name: string;
-          place?: string;
-          room_id: string;
-          seats?: number;
-        };
-        Update: {
-          created_at?: string;
-          id?: string;
-          name?: string;
-          place?: string;
-          room_id?: string;
-          seats?: number;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "room_badges_room_id_fkey";
-            columns: ["room_id"];
-            isOneToOne: false;
-            referencedRelation: "rooms";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
       room_tasks: {
         Row: {
           created_at: string;

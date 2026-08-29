@@ -1,7 +1,8 @@
-// A rotating color per group badge, picked by its position in the (stably-ordered) badges
-// list — the teacher panel and the student session page both fetch badges via useRoomBadges
-// (ordered by created_at), so the same badge lands on the same color in both places without
-// needing to store a color anywhere.
+// A stable color per group badge, picked by its fixed position in GROUP_FRUITS
+// (src/lib/group-fruits.ts) — the teacher panel and the student session page both render the
+// same fixed fruit list in the same order, so the same fruit lands on the same color in both
+// places without needing to store a color anywhere. 8 entries, one per fruit, deliberately none
+// in the red/rose family (that's --primary and --destructive).
 const PALETTE = [
   {
     idle: "border-blue-500/40 text-blue-700 dark:text-blue-400",
@@ -32,6 +33,16 @@ const PALETTE = [
     idle: "border-lime-600/40 text-lime-700 dark:text-lime-400",
     active: "border-lime-600 bg-lime-600 text-white",
     dot: "bg-lime-600",
+  },
+  {
+    idle: "border-cyan-500/40 text-cyan-700 dark:text-cyan-400",
+    active: "border-cyan-500 bg-cyan-500 text-white",
+    dot: "bg-cyan-500",
+  },
+  {
+    idle: "border-amber-500/40 text-amber-700 dark:text-amber-400",
+    active: "border-amber-500 bg-amber-500 text-white",
+    dot: "bg-amber-500",
   },
 ] as const;
 

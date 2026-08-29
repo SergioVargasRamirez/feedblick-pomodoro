@@ -1,28 +1,20 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableHead,
-  TableRow,
-  TableCell,
-} from "@/components/ui/table";
 import { TimerWheel } from "@/components/TimerWheel";
 import { BrandMark } from "@/components/BrandMark";
 import { BackgroundGlow } from "@/components/BackgroundGlow";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { ChevronUp, ChevronDown } from "lucide-react";
+import { RosterTable } from "@/components/RosterTable";
 import { cn } from "@/lib/utils";
 import { badgeColor } from "@/lib/badge-colors";
-import { useRoomByCode, useRoomBadges, useRoomTasks } from "@/hooks/use-room";
+import { GROUP_FRUITS } from "@/lib/group-fruits";
+import { useRoomByCode, useRoomTasks } from "@/hooks/use-room";
 import {
   useRoomPresenceChannel,
   trackPresence,
-  summarizeByBadge,
   type SignalKind,
   type StudentPresence,
 } from "@/lib/room-presence";
@@ -77,7 +69,6 @@ function SessionView() {
   const { code } = Route.useParams();
   const { room, loading, notFound } = useRoomByCode(code);
   const { tasks } = useRoomTasks(room?.id);
-  const { badges } = useRoomBadges(room?.id);
   const { channel, students, synced } = useRoomPresenceChannel(
     room?.status === "active" ? room.code : undefined,
   );
@@ -86,12 +77,10 @@ function SessionView() {
   const [name, setName] = useState("");
   const [committedName, setCommittedName] = useState("");
   const [checked, setChecked] = useState<Set<string>>(new Set());
-  const [self, setSelf] = useState<Pick<StudentPresence, "badgeId" | "signal">>({
-    badgeId: null,
+  const [self, setSelf] = useState<Pick<StudentPresence, "fruit" | "signal">>({
+    fruit: null,
     signal: null,
   });
-  const [sortBy, setSortBy] = useState<"name" | "group">("name");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
   // A returning student (same tab, reloaded) keeps whatever they typed before.
   useEffect(() => {
@@ -131,39 +120,9 @@ function SessionView() {
     setSelf((prev) => ({ ...prev, signal: prev.signal === kind ? null : kind }));
   };
 
-  const toggleBadge = (id: string) => {
-    setSelf((prev) => ({ ...prev, badgeId: prev.badgeId === id ? null : id }));
+  const toggleFruit = (id: string) => {
+    setSelf((prev) => ({ ...prev, fruit: prev.fruit === id ? null : id }));
   };
-
-  const byBadge = summarizeByBadge(
-    students,
-    badges.map((b) => b.id),
-  );
-
-  const toggleSort = (field: "name" | "group") => {
-    if (sortBy === field) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    else {
-      setSortBy(field);
-      setSortDir("asc");
-    }
-  };
-
-  // Unassigned students always sort to the end, regardless of direction — "no group yet" isn't
-  // meaningfully before or after any actual group name.
-  const roster = useMemo(() => {
-    const withGroup = students.map((s) => {
-      const groupIndex = badges.findIndex((b) => b.id === s.badgeId);
-      return { ...s, group: groupIndex >= 0 ? badges[groupIndex] : null, groupIndex };
-    });
-    const sorted = [...withGroup].sort((a, b) => {
-      if (sortBy === "name") return a.name.localeCompare(b.name);
-      if (!a.group && !b.group) return 0;
-      if (!a.group) return 1;
-      if (!b.group) return -1;
-      return a.group.name.localeCompare(b.group.name);
-    });
-    return sortDir === "asc" ? sorted : sorted.reverse();
-  }, [students, badges, sortBy, sortDir]);
 
   if (loading) {
     return (
@@ -262,119 +221,31 @@ function SessionView() {
           placeholder="Your name, a nickname, whatever you like"
           maxLength={40}
         />
-        {badges.length > 0 && (
-          <div className="flex flex-wrap gap-2 pt-1">
-            {badges.map((b, i) => {
-              const occupied = byBadge[b.id]?.total ?? 0;
-              const isSelf = self.badgeId === b.id;
-              const isFull = !isSelf && occupied >= b.seats;
-              const color = badgeColor(i);
-              return (
-                <button
-                  key={b.id}
-                  disabled={isFull}
-                  onClick={() => toggleBadge(b.id)}
-                  className={cn(
-                    "rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors",
-                    isFull
-                      ? "border-muted text-muted-foreground/50 cursor-not-allowed"
-                      : isSelf
-                        ? color.active
-                        : color.idle,
-                  )}
-                >
-                  {b.name}
-                  {b.place ? ` · ${b.place}` : ""} · {occupied}/{b.seats}
-                  {isFull ? " · full" : ""}
-                </button>
-              );
-            })}
-          </div>
-        )}
+        <div className="flex flex-wrap gap-2 pt-1">
+          {GROUP_FRUITS.map((fruit, i) => {
+            const isSelf = self.fruit === fruit.id;
+            const color = badgeColor(i);
+            return (
+              <button
+                key={fruit.id}
+                onClick={() => toggleFruit(fruit.id)}
+                className={cn(
+                  "rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors",
+                  isSelf ? color.active : color.idle,
+                )}
+              >
+                <span aria-hidden="true">{fruit.emoji}</span> {fruit.label}
+              </button>
+            );
+          })}
+        </div>
         {!synced && <p className="text-xs text-muted-foreground">Connecting…</p>}
       </div>
 
       <div>
         <p className="text-sm font-medium mb-2">In this room</p>
-        {students.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No one else here yet.</p>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>
-                  <SortButton
-                    field="name"
-                    label="Name"
-                    sortBy={sortBy}
-                    sortDir={sortDir}
-                    onSort={toggleSort}
-                  />
-                </TableHead>
-                <TableHead>
-                  <SortButton
-                    field="group"
-                    label="Group"
-                    sortBy={sortBy}
-                    sortDir={sortDir}
-                    onSort={toggleSort}
-                  />
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {roster.map((s) => (
-                <TableRow key={s.presenceKey}>
-                  <TableCell>{s.name}</TableCell>
-                  <TableCell>
-                    {s.group ? (
-                      <span
-                        className={cn(
-                          "inline-flex rounded-full border px-2.5 py-0.5 text-xs font-medium",
-                          badgeColor(s.groupIndex).idle,
-                        )}
-                      >
-                        {s.group.name}
-                      </span>
-                    ) : (
-                      <span className="text-muted-foreground">—</span>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
+        <RosterTable students={students} />
       </div>
     </div>
-  );
-}
-
-function SortButton({
-  field,
-  label,
-  sortBy,
-  sortDir,
-  onSort,
-}: {
-  field: "name" | "group";
-  label: string;
-  sortBy: "name" | "group";
-  sortDir: "asc" | "desc";
-  onSort: (field: "name" | "group") => void;
-}) {
-  const active = sortBy === field;
-  const Icon = sortDir === "asc" ? ChevronUp : ChevronDown;
-  return (
-    <button
-      onClick={() => onSort(field)}
-      className={cn(
-        "flex items-center gap-1 font-medium",
-        active ? "text-foreground" : "text-muted-foreground",
-      )}
-    >
-      {label}
-      {active && <Icon className="size-3.5" />}
-    </button>
   );
 }
