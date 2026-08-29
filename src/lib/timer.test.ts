@@ -9,6 +9,7 @@ import {
   MAX_MINUTES,
   MIN_MINUTES,
   nextAutoAdvancePatch,
+  phaseLabel,
   shouldAutoAdvance,
   type RoomTimerRow,
 } from "./timer";
@@ -191,5 +192,30 @@ describe("nextAutoAdvancePatch", () => {
 
   test("idle has nothing to advance from", () => {
     expect(nextAutoAdvancePatch({ ...IDLE, focus_minutes: 25, break_minutes: 5 })).toBeNull();
+  });
+});
+
+describe("phaseLabel", () => {
+  test("idle reads as Ready", () => {
+    expect(phaseLabel({ phase: "idle", isPaused: false })).toBe("Ready");
+  });
+
+  test("running focus gets the tomato", () => {
+    expect(phaseLabel({ phase: "focus", isPaused: false })).toBe("Focus 🍅");
+  });
+
+  test("running break gets the celebration", () => {
+    expect(phaseLabel({ phase: "break", isPaused: false })).toBe("Break 🎉");
+  });
+
+  test("paused overrides the phase label regardless of which phase it is", () => {
+    expect(phaseLabel({ phase: "focus", isPaused: true })).toBe("Paused ⏸️");
+    expect(phaseLabel({ phase: "break", isPaused: true })).toBe("Paused ⏸️");
+  });
+
+  test("idle is never reported as paused, even if isPaused were somehow true", () => {
+    // useRoomTimerDisplay never actually produces this combination, but phaseLabel's own
+    // idle-first check means it can't matter if some future caller passes it anyway.
+    expect(phaseLabel({ phase: "idle", isPaused: true })).toBe("Ready");
   });
 });

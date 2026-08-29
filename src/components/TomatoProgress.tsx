@@ -2,13 +2,29 @@
 // current phase's countdown elapses. Not the 🍅 emoji — emoji glyphs are fixed multi-color
 // bitmaps/COLR fonts that CSS `color` can't recolor, so an actual color transition needs a
 // plain SVG shape instead.
-function lerpColor(
+//
+// Both pieces of real logic (how far along the phase is, and what color that maps to) are
+// pulled out as exported pure functions — same "extract the testable part" split as
+// countdown.ts's formatRemaining — rather than left as unexported locals only reachable by
+// rendering the component.
+export function lerpColor(
   from: [number, number, number],
   to: [number, number, number],
   t: number,
 ): string {
   const mixed = from.map((c, i) => Math.round(c + (to[i] - c) * t));
   return `rgb(${mixed[0]}, ${mixed[1]}, ${mixed[2]})`;
+}
+
+// Idle has no phase to track progress through, so it reports fully elapsed (ripe/red) — the
+// restful default — rather than a meaningless 0%. Same for a not-yet-loaded/zero-length phase.
+export function tomatoElapsedFraction(
+  remainingSeconds: number,
+  totalSeconds: number,
+  phase: string,
+): number {
+  if (phase === "idle" || totalSeconds <= 0) return 1;
+  return Math.min(1, Math.max(0, 1 - remainingSeconds / totalSeconds));
 }
 
 const UNRIPE_GREEN: [number, number, number] = [132, 204, 22]; // tailwind lime-500
@@ -25,12 +41,7 @@ export function TomatoProgress({
   phase: string;
   size?: number;
 }) {
-  // Idle has no phase to track progress through, so it just shows fully ripe (red) — the
-  // default, restful state — rather than a meaningless 0%.
-  const elapsedFraction =
-    phase === "idle" || totalSeconds <= 0
-      ? 1
-      : Math.min(1, Math.max(0, 1 - remainingSeconds / totalSeconds));
+  const elapsedFraction = tomatoElapsedFraction(remainingSeconds, totalSeconds, phase);
   const bodyColor = lerpColor(UNRIPE_GREEN, RIPE_RED, elapsedFraction);
 
   return (
