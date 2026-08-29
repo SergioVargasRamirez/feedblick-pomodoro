@@ -15,7 +15,7 @@ export const Route = createFileRoute("/")({
 // establish the app shell and the teacher sign-in entry point.
 function Home() {
   return (
-    <div className="relative min-h-screen bg-background">
+    <div className="relative isolate min-h-screen bg-background">
       <BackgroundGlow />
       <header className="border-b">
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">

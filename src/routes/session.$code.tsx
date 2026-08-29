@@ -184,7 +184,7 @@ function SessionView() {
   }
 
   return (
-    <div className="relative min-h-screen bg-background px-4 py-6 space-y-6 max-w-3xl mx-auto">
+    <div className="relative isolate min-h-screen bg-background px-4 py-6 space-y-6 max-w-3xl mx-auto">
       <BackgroundGlow />
       <div className="flex items-center justify-between">
         <BrandMark />

@@ -140,7 +140,7 @@ function RoomControl() {
   };
 
   return (
-    <div className="relative min-h-screen bg-background">
+    <div className="relative isolate min-h-screen bg-background">
       <BackgroundGlow />
       <Toaster />
       <header className="border-b">
