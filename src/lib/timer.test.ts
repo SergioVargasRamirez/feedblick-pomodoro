@@ -12,6 +12,7 @@ import {
   nextAutoAdvancePatch,
   phaseLabel,
   shouldAutoAdvance,
+  transportAction,
   type RoomTimerRow,
 } from "./timer";
 
@@ -218,6 +219,23 @@ describe("phaseLabel", () => {
     // useRoomTimerDisplay never actually produces this combination, but phaseLabel's own
     // idle-first check means it can't matter if some future caller passes it anyway.
     expect(phaseLabel({ phase: "idle", isPaused: true })).toBe("Ready");
+  });
+});
+
+describe("transportAction", () => {
+  test("idle always means start, regardless of isRunning", () => {
+    expect(transportAction({ phase: "idle", isRunning: false })).toBe("start");
+    expect(transportAction({ phase: "idle", isRunning: true })).toBe("start");
+  });
+
+  test("a running phase means the button pauses it", () => {
+    expect(transportAction({ phase: "focus", isRunning: true })).toBe("pause");
+    expect(transportAction({ phase: "break", isRunning: true })).toBe("pause");
+  });
+
+  test("a stopped-but-not-idle phase means the button resumes it", () => {
+    expect(transportAction({ phase: "focus", isRunning: false })).toBe("resume");
+    expect(transportAction({ phase: "break", isRunning: false })).toBe("resume");
   });
 });
 

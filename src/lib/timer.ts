@@ -145,6 +145,17 @@ export function phaseLabel(timer: { phase: string; isPaused: boolean }): string 
   return "";
 }
 
+// The single Play/Pause transport button in the room panel does triple duty (start from idle,
+// pause while running, resume while paused) — this is the branch that decides which of the
+// three it means right now, kept separate from the icon/label choice and the handler dispatch
+// that consume it.
+export type TransportAction = "start" | "pause" | "resume";
+
+export function transportAction(timer: { phase: string; isRunning: boolean }): TransportAction {
+  if (timer.phase === "idle") return "start";
+  return timer.isRunning ? "pause" : "resume";
+}
+
 // Live display of a room's timer, whether it's running (ticks via useCountdown, same
 // target-timestamp pattern as everywhere else) or paused (static — nothing to tick against).
 export function useRoomTimerDisplay(state: RoomTimerRow) {

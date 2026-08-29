@@ -155,8 +155,8 @@ in `phaseLabel`/the tomato color math) that shipped without coverage first.
   `break_minutes` (same migration as room name; defaults 25/5) replace the old
   `FOCUS_PRESET_MINUTES` button row. `MinutesStepper` in `rooms.$roomId.tsx` is a plain -/+ (in
   `MINUTES_STEP`-sized jumps, clamped to `[MIN_MINUTES, MAX_MINUTES]` via `clampMinutes` —
-  `src/lib/timer.ts`) next to a "Start focus"/"Skip to break" button. Persisted, not local
-  component state, because the auto-advance effect below needs to read them too.
+  `src/lib/timer.ts`). Persisted, not local component state, because the auto-advance effect
+  below needs to read them too.
 - **Auto-advance when a phase's countdown hits zero** — fixes a real reported bug ("when a
   break/pause ends, the timer doesn't reset to a second pomodoro"): every phase change used to
   be manual-click-only, so reaching 0:00 did nothing on its own. `shouldAutoAdvance` (zero-
@@ -173,6 +173,17 @@ in `phaseLabel`/the tomato color math) that shipped without coverage first.
   teacher panel, `/session/$code`, and `/display/$code` so the wording can't drift between them.
   `timer_round` still exists and still increments (nothing currently reads it for display, but
   removing the column/logic entirely felt premature given the tentative "not sure" framing).
+- **Cassette-style transport controls** ("the different sizes are not nice... like a cassette
+  recorder"): the old variable-width `Start`/`Pause`/`Resume`/`Reset`/`Skip to break` text
+  buttons in `rooms.$roomId.tsx` are now three equal-sized (`size="icon"`, `size-11`) icon
+  buttons — a single Play/Pause toggle (filled, primary) that does start/pause/resume duty,
+  Stop (`Square` icon, outline) for Reset, and `FastForward` (outline) for Skip to break.
+  "Rewind" was deliberately left out — nothing in this app goes backward for it to map to.
+  Which of start/pause/resume the toggle means right now is decided by `transportAction()` in
+  `src/lib/timer.ts` (idle → "start", running → "pause", stopped-but-not-idle → "resume"),
+  pulled out as its own tested pure function per the mandatory testing rule rather than left as
+  an inline ternary in the component. Icon-only buttons keep `aria-label`/`title` for
+  accessibility.
 - **Teacher** (`/rooms/$roomId`): laid out top-to-bottom as Timer (upper-left, with the
   focus/break steppers) + To-do list (upper-right), then live counts (with a per-fruit signal
   drill-down), then the roster table. The QR code is NOT inline in that layout — it's a
@@ -187,10 +198,13 @@ in `phaseLabel`/the tomato color math) that shipped without coverage first.
   `window.open(url, name, "width=...,height=...")` pattern as `feedblick-edu`'s
   `openLiveDashboard.ts`, which also falls back to a toast if the popup is blocked.
 - **Room display** (projector, unauthenticated): `/display/$code`, reordered top-to-bottom to
-  tomato → time → QR. `src/components/TomatoProgress.tsx` is a plain SVG tomato (not the 🍅
-  emoji — emoji glyphs are fixed multi-color bitmaps/COLR fonts CSS `color` can't recolor) that
-  ripens from green to red as the current phase's countdown elapses; idle shows fully red.
-  Live-counts meters and the "In room" number were removed from this page specifically — "this
+  emoji → time → QR. `src/components/PhaseIcon.tsx` renders the real 🍅 emoji for
+  idle/focus and swaps to 🎉 for break ("during break, the emoji should change as well; no
+  tomato here") — it replaced an earlier custom SVG tomato that ripened green→red, dropped
+  because the user wanted "the same tomato icon" as everywhere else (BrandMark/favicon), not a
+  hand-drawn shape; emoji glyphs are fixed multi-color bitmaps/COLR fonts CSS `color` can't
+  recolor, so phase-keyed swapping replaced color-lerp entirely. Live-counts meters and the "In
+  room" number were removed from this page specifically — "this
   is just eye candy" was the ask, and the meters/count are still on the teacher panel. The QR
   card shows the raw session URL as its description instead of the room code — nobody at the
   projector needs the code once they can see (or scan) the actual link. No `BackgroundGlow` here
@@ -231,6 +245,6 @@ TimerWheel.tsx` is the shared circular countdown widget (SVG ring draining from 
   to blindly `.reverse()` the whole array, which put unassigned students FIRST instead of
   always-last). Still no Playwright/pgTAP coverage for any of the room/timer/signal flow
   end-to-end — `e2e/` and `supabase/tests/database/` are still just the scaffold's smoke
-  skeleton. `TimerWheel`/`SignalMeter`/`InRoomBadge`/`TomatoProgress`/`FloatingQrPanel`'s drag
-  behavior/`MinutesStepper` have no tests at all yet (mostly presentational, but the drag math
-  and the stepper's clamping are real logic worth covering eventually).
+  skeleton. `TimerWheel`/`SignalMeter`/`CountBadge`/`FloatingQrPanel`'s drag behavior/
+  `MinutesStepper` have no tests at all yet (mostly presentational, but the drag math and the
+  stepper's clamping are real logic worth covering eventually).

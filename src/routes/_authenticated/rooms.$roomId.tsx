@@ -5,7 +5,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, Trash2, AlertTriangle, Minus, Users } from "lucide-react";
+import {
+  ArrowLeft,
+  Plus,
+  Trash2,
+  AlertTriangle,
+  Minus,
+  Users,
+  Play,
+  Pause,
+  Square,
+  FastForward,
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { TimerWheel } from "@/components/TimerWheel";
 import { SignalMeter } from "@/components/SignalMeter";
@@ -40,6 +51,7 @@ import {
   nextAutoAdvancePatch,
   phaseLabel,
   shouldAutoAdvance,
+  transportAction,
   useRoomTimerDisplay,
 } from "@/lib/timer";
 
@@ -148,13 +160,22 @@ function RoomControl() {
     GROUP_FRUITS.map((f) => f.id),
   );
 
-  const onStartFocus = () =>
-    updateRoom(
-      buildStartFocus(room.focus_minutes, room.timer_phase === "idle" ? 1 : room.timer_round),
-    );
-  const onPauseResume = () => updateRoom(timer.isRunning ? buildPause(room) : buildResume(room));
+  // One cassette-style transport button does start/pause/resume — transportAction (timer.ts)
+  // decides which of the three it means right now; this just dispatches to the matching update.
+  const action = transportAction(timer);
+  const onPlayPause = () => {
+    if (action === "start") {
+      updateRoom(
+        buildStartFocus(room.focus_minutes, room.timer_phase === "idle" ? 1 : room.timer_round),
+      );
+    } else {
+      updateRoom(action === "pause" ? buildPause(room) : buildResume(room));
+    }
+  };
   const onReset = () => updateRoom(buildReset());
   const onSkipToBreak = () => updateRoom(buildStartBreak(room.timer_round, room.break_minutes));
+
+  const playPauseLabel = action === "pause" ? "Pause" : action === "resume" ? "Resume" : "Start";
 
   const onEndRoom = async () => {
     const { error } = await supabase.from("rooms").update({ status: "ended" }).eq("id", room.id);
@@ -238,16 +259,39 @@ function RoomControl() {
                   minutes={room.break_minutes}
                   onChange={(m) => updateRoom({ break_minutes: m })}
                 />
-                <div className="flex flex-wrap gap-2">
-                  <Button onClick={onStartFocus}>Start</Button>
-                  <Button onClick={onPauseResume} disabled={timer.phase === "idle"}>
-                    {timer.isRunning ? "Pause" : "Resume"}
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="icon"
+                    className="size-11"
+                    onClick={onPlayPause}
+                    aria-label={playPauseLabel}
+                    title={playPauseLabel}
+                  >
+                    {action === "pause" ? (
+                      <Pause className="size-5" />
+                    ) : (
+                      <Play className="size-5" />
+                    )}
                   </Button>
-                  <Button variant="outline" onClick={onReset}>
-                    Reset
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="size-11"
+                    onClick={onReset}
+                    aria-label="Reset"
+                    title="Reset"
+                  >
+                    <Square className="size-5" />
                   </Button>
-                  <Button variant="outline" onClick={onSkipToBreak}>
-                    Skip to break
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="size-11"
+                    onClick={onSkipToBreak}
+                    aria-label="Skip to break"
+                    title="Skip to break"
+                  >
+                    <FastForward className="size-5" />
                   </Button>
                 </div>
               </div>
