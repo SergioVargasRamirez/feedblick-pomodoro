@@ -1,6 +1,3 @@
-// Generated stub — no migrations exist yet. Regenerate for real with:
-//   bunx supabase gen types typescript --local > src/integrations/supabase/types.ts
-// once the room/timer/handle schema lands.
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export type Database = {
@@ -31,7 +28,115 @@ export type Database = {
   };
   public: {
     Tables: {
-      [_ in never]: never;
+      room_badges: {
+        Row: {
+          created_at: string;
+          id: string;
+          name: string;
+          place: string;
+          room_id: string;
+          seats: number;
+        };
+        Insert: {
+          created_at?: string;
+          id?: string;
+          name: string;
+          place?: string;
+          room_id: string;
+          seats?: number;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          name?: string;
+          place?: string;
+          room_id?: string;
+          seats?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "room_badges_room_id_fkey";
+            columns: ["room_id"];
+            isOneToOne: false;
+            referencedRelation: "rooms";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      room_tasks: {
+        Row: {
+          created_at: string;
+          id: string;
+          position: number;
+          room_id: string;
+          text: string;
+        };
+        Insert: {
+          created_at?: string;
+          id?: string;
+          position?: number;
+          room_id: string;
+          text: string;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          position?: number;
+          room_id?: string;
+          text?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "room_tasks_room_id_fkey";
+            columns: ["room_id"];
+            isOneToOne: false;
+            referencedRelation: "rooms";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      rooms: {
+        Row: {
+          code: string;
+          code_expires_at: string;
+          created_at: string;
+          id: string;
+          status: string;
+          teacher_id: string;
+          timer_duration_seconds: number | null;
+          timer_phase: string;
+          timer_remaining_seconds: number | null;
+          timer_round: number;
+          timer_target_at: string | null;
+        };
+        Insert: {
+          code: string;
+          code_expires_at: string;
+          created_at?: string;
+          id?: string;
+          status?: string;
+          teacher_id: string;
+          timer_duration_seconds?: number | null;
+          timer_phase?: string;
+          timer_remaining_seconds?: number | null;
+          timer_round?: number;
+          timer_target_at?: string | null;
+        };
+        Update: {
+          code?: string;
+          code_expires_at?: string;
+          created_at?: string;
+          id?: string;
+          status?: string;
+          teacher_id?: string;
+          timer_duration_seconds?: number | null;
+          timer_phase?: string;
+          timer_remaining_seconds?: number | null;
+          timer_round?: number;
+          timer_target_at?: string | null;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       [_ in never]: never;
