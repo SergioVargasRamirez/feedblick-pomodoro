@@ -30,7 +30,7 @@ import {
   type SignalKind,
   type StudentPresence,
 } from "@/lib/room-presence";
-import { canSignalDone, nextClaimState } from "@/lib/task-claim";
+import { canSignalDone, isClaimLocked, nextClaimState } from "@/lib/task-claim";
 import { flattenTaskTree, subtaskProgress } from "@/lib/task-tree";
 import { phaseLabel, useRoomTimerDisplay } from "@/lib/timer";
 
@@ -282,6 +282,7 @@ function SessionView() {
                 }
                 const t = row.task;
                 const isMine = t.claimed_by === identifiedName;
+                const locked = isClaimLocked(t, identifiedName);
                 // The pill IS the completion control for a claimed task now — no separate
                 // checkbox alongside it. Unclaimed tasks keep the plain local checkbox exactly
                 // as before.
@@ -296,28 +297,44 @@ function SessionView() {
                     ? t.completed
                       ? "Tap to release this task"
                       : "Tap to mark done"
-                    : `Claimed by ${t.claimed_by} — tap to claim it yourself`;
+                    : locked
+                      ? `Completed by ${t.claimed_by} — only they can reopen it`
+                      : `Claimed by ${t.claimed_by} — tap to claim it yourself`;
+                const pillClassName = cn(
+                  "rounded-full border px-2 py-0.5 text-xs font-medium transition-colors",
+                  !t.claimed_by
+                    ? "border-muted-foreground/30 text-muted-foreground hover:border-foreground hover:text-foreground"
+                    : t.completed
+                      ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+                      : isMine
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-transparent bg-muted text-muted-foreground",
+                );
                 return (
                   <div className="flex items-center gap-1.5">
-                    {room.claiming_enabled && (
-                      <button
-                        onClick={() => onTapClaim(t)}
-                        disabled={!identifiedName}
-                        title={title}
-                        className={cn(
-                          "rounded-full border px-2 py-0.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50",
-                          !t.claimed_by
-                            ? "border-muted-foreground/30 text-muted-foreground hover:border-foreground hover:text-foreground"
-                            : t.completed
-                              ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
-                              : isMine
-                                ? "border-primary bg-primary/10 text-primary"
-                                : "border-transparent bg-muted text-muted-foreground",
-                        )}
-                      >
-                        {label}
-                      </button>
-                    )}
+                    {room.claiming_enabled &&
+                      (locked ? (
+                        // Done is meant to be final, unlike an in-progress claim (still
+                        // steal-able by anyone, no-locks-by-design elsewhere on this pill) —
+                        // "nobody should be able to open it except the person that claimed it."
+                        // Stays visible (so everyone can still see it's done and by whom), just
+                        // not a button — nothing to tap.
+                        <span title={title} className={cn(pillClassName, "cursor-default")}>
+                          {label}
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => onTapClaim(t)}
+                          disabled={!identifiedName}
+                          title={title}
+                          className={cn(
+                            pillClassName,
+                            "disabled:cursor-not-allowed disabled:opacity-50",
+                          )}
+                        >
+                          {label}
+                        </button>
+                      ))}
                     {!t.claimed_by && (
                       <Checkbox
                         checked={checked.has(t.id)}

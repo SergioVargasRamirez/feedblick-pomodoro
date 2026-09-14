@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { canSignalDone, nextClaimState } from "./task-claim";
+import { canSignalDone, isClaimLocked, nextClaimState } from "./task-claim";
 
 function task(id: string, claimed_by: string | null, completed: boolean) {
   return { id, claimed_by, completed };
@@ -47,6 +47,24 @@ describe("nextClaimState", () => {
     expect(state).toEqual({ claimed_by: "Alice", completed: true });
     state = nextClaimState(state, "Alice");
     expect(state).toEqual({ claimed_by: null, completed: false });
+  });
+});
+
+describe("isClaimLocked", () => {
+  test("a Done task is locked for anyone but the claimant", () => {
+    expect(isClaimLocked({ claimed_by: "Alice", completed: true }, "Bob")).toBe(true);
+  });
+
+  test("the claimant themself is never locked out of their own Done task", () => {
+    expect(isClaimLocked({ claimed_by: "Alice", completed: true }, "Alice")).toBe(false);
+  });
+
+  test("an in-progress (Doing) claim is never locked — still stealable, by design", () => {
+    expect(isClaimLocked({ claimed_by: "Alice", completed: false }, "Bob")).toBe(false);
+  });
+
+  test("an unclaimed task is never locked", () => {
+    expect(isClaimLocked({ claimed_by: null, completed: false }, "Bob")).toBe(false);
   });
 });
 

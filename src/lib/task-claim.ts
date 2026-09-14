@@ -13,6 +13,16 @@ export function nextClaimState(current: ClaimState, actorName: string): ClaimSta
   return { claimed_by: null, completed: false };
 }
 
+// The one exception to "no locks, tapping anyone else's claim takes it over" above: once a task
+// reaches Done, it's meant to be final, not still up for grabs the way an in-progress claim is
+// ("nobody should be able to open it except the person that claimed it," direct report).
+// `nextClaimState` itself stays lock-free/caller-agnostic — this is a separate predicate the
+// caller checks first, and simply doesn't render a clickable pill for anyone it returns true for
+// (the claimant's own tap still goes through `nextClaimState` normally, to release it).
+export function isClaimLocked(task: ClaimState, actorName: string): boolean {
+  return task.completed && task.claimed_by !== actorName;
+}
+
 // A task claimed by someone ELSE isn't your responsibility, so it can't block your own "Done"
 // signal — only unclaimed tasks (your local checkbox) and tasks YOU claimed (the shared
 // `completed` flag — i.e. the "Done" state of the claim cycle above) count against you. An empty
