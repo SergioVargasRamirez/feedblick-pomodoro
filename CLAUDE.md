@@ -90,7 +90,9 @@ in `phaseLabel`/the tomato color math) that shipped without coverage first.
   `summarize*`/`pickAutoAssignFruit`, `admin-emails.ts`'s `isAdminEmail`,
   `access-request-status.ts`'s `getAccessRequestAcceptanceStatus`, `task-claim.ts`'s
   `nextClaimedBy`/`canSignalDone`, `group-fruits.ts`'s
-  `toggleDisabledFruit`/`canToggleFruitEnabled`/`enabledFruitIds`.
+  `toggleDisabledFruit`/`canToggleFruitEnabled`/`enabledFruitIds`, `task-tree.ts`'s
+  `flattenTaskTree`/`subtaskProgress`/`reorderSiblings`, `markdown-tasks.ts`'s
+  `parseTaskMarkdown`, `host-groups.ts`'s `resolveGroupSet`/`swapPositions`.
 - A few things genuinely need a rendered-component test instead (interaction behavior like
   "clicking this header sorts the table") — `RosterTable.test.tsx` is the existing example;
   reach for `@testing-library/react` the same way, and read `test/setup.ts`'s comments first
@@ -438,9 +440,108 @@ TimerWheel.tsx` is the shared circular countdown widget (SVG ring draining from 
   the picker specifically filters *without* re-indexing `GROUP_FRUITS`, since `badgeColor(i)`
   keys off each fruit's fixed position — using the filtered array's own index would have shifted
   colors around every time a group ahead of it got disabled.
+- **To-do list: subtasks, drag-and-drop reorder, markdown import, per-host group names**
+  (2026-09-14, full design in the approved plan at planning time — see git history for that
+  conversation): four features landing together since they all converge on giving
+  `room_tasks` a tree shape. `room_tasks.parent_id` (self-referencing, `ON DELETE CASCADE`) and
+  `room_tasks.assigned_group` (migration `20260914090000_...sql`) — a task WITH subtasks becomes
+  group-assignable (host-only write, no participant GRANT — a deliberate judgment call: claim/
+  complete are participant-initiated, assigning a whole cluster reads as a host planning
+  decision, closer to editing task text; flagged, easy to reverse if wrong) and stops having its
+  own individual claim/checkbox (its completion is derived — `subtaskProgress()`,
+  `task-tree.ts` — never a stored flag); its children behave EXACTLY like today's flat tasks
+  (individual `claimed_by`/`completed`, unchanged). No DB constraint stops nesting deeper than
+  one level — enforced only by the parser (`markdown-tasks.ts`) and the UI (no "+ subtask" on a
+  depth-1 row); see Known Gaps.
+  - `src/lib/task-tree.ts`: `flattenTaskTree` (the shared display-order computation both
+    `rooms.$roomId.tsx` and `session.$code.tsx` pre-flatten with, so `TaskTable` itself stays
+    tree-logic-free — each top-level task's own children immediately follow it, in their own
+    `position` order; a dangling `parent_id` falls back to top-level rather than disappearing),
+    `subtaskProgress`, `reorderSiblings` (drag-and-drop's core rule: reordering is scoped to one
+    sibling group at a time — top-level tasks among themselves, one parent's children among
+    themselves — dragging across groups returns `null`, so the caller just writes nothing and the
+    row visually snaps back). All tested.
+  - **Drag-and-drop is real** (`@dnd-kit/core`/`sortable`/`utilities`, exact versions already
+    vetted in `feedblick-edu`'s own dnd-kit usage), not up/down buttons — even though
+    `feedblick-stars` deliberately *removed* dnd-kit for a similarly short list ("a button does
+    the same job... without reintroducing it"). Sergio chose real DnD anyway specifically
+    because this app is touch/iPad-first. `TaskTable.tsx` makes it opt-in via a `reorder` prop:
+    present (teacher only) it wraps rows in one `DndContext` + one flat `SortableContext` (not
+    nested per-group ones — `reorderSiblings`'s null-on-cross-group-drag enforces the actual
+    business rule, simpler than dnd-kit's multi-container API and still fully correct); absent
+    (every student-page usage) `TaskTable` renders exactly as before, zero DnD cost, no handle
+    column — this is what keeps reordering teacher-only for free rather than needing a separate
+    prop to disable it. Reordering writes are a plain `Promise.all` of direct
+    `.update({position})` calls, not an RPC — feedblick-stars' `table_labels` used an atomic
+    delete+reinsert RPC to solve a snapshot-consistency problem for a diner-facing read that has
+    no equivalent here (the teacher already has full unrestricted UPDATE on `room_tasks`, and
+    every edit here is already a single, already-consistent row write).
+  - **Markdown import** (`src/lib/markdown-tasks.ts`, `MarkdownTaskImportDialog.tsx`, modeled on
+    but not copied from `feedblick-edu`'s `MarkdownImportDialog`/`markdown-questions.ts` shell —
+    paste/upload/template-download/live-parse-with-errors, import disabled until valid): hand-
+    rolled, no markdown library, matching this repo's existing convention. Grammar is
+    deliberately narrow — top-level `-`/`*` bullets are tasks, exactly one level of indented
+    bullets under a task are its subtasks, anything indented deeper or inconsistently is a parse
+    error — this is what enforces the one-level-nesting scope limit at the parser level. Always
+    appends, never replaces (stated directly in the dialog copy). `onImportTasks`
+    (`rooms.$roomId.tsx`) client-generates ids for the parent rows so a second batch insert can
+    reference them for children, in two round trips — no transaction, so a rare failure between
+    them leaves a visible, retriable partial state (parents with no children yet), not silent
+    corruption.
+  - **Subtasks are also creatable directly**, not only via import — a small inline "+" control on
+    every top-level task row (`onAddSubtask`, same insert shape as `onAddTask` with `parent_id`
+    set) reveals an inline text field in that row's own cell. This was added beyond what the
+    original four-feature request literally specified (which only produced task/subtask
+    structure via markdown import) because subtasks were asked for as their own standalone
+    numbered item, not as a side effect of import.
+  - **Custom group names** (`host_group_names` table, migration `20260914100000_...sql`, RLS
+    scoped to the owning teacher for writes + anon-readable while that teacher has any active
+    room — same "join through an active room" shape as `room_tasks`' own anon-read policy, except
+    keyed off ANY active room owned by that teacher, since group names are a host-level setting
+    shared across every room they run at once). `src/lib/host-groups.ts`'s `resolveGroupSet`
+    is the default-preserving path: empty → the 8 fruits, unchanged; any custom groups → those
+    fully replace the fruits (plain colored pills, no emoji), for every room that host runs. This
+    resolved set now drives *everything* "group" touches app-wide, not just task assignment —
+    the student self-picker and auto-assign too (`pickAutoAssignFruit`/`summarizeByFruit` in
+    `room-presence.ts` needed zero changes, since they already took a plain id list).
+    `HostGroupNamesEditor.tsx` (a new "Groups" card on `/account`, modeled on `feedblick-stars`'
+    `TableLabelsEditor` add/rename/remove shape but instant-write per action, matching this app's
+    no-save-button idiom everywhere else) uses `ChevronUp`/`ChevronDown` buttons to reorder, NOT
+    drag-and-drop — the reasoning for choosing real DnD on the to-do list (iPad, live in-room
+    use) doesn't apply to this desktop settings page edited out-of-band, and stars' own
+    "buttons, not DnD, for a short list" reasoning applies here directly. No realtime
+    subscription on `host_group_names` — edited only on `/account`, disjoint from any live room;
+    a host renaming a group mid-class propagates on next page load, not live (stated scope
+    limit, see the migration's own comment).
+  - `canSignalDone` (`task-claim.ts`) is **unchanged** — traced through carefully rather than
+    assumed safe. Feeding it a parent row (whose `claimed_by`/`completed` are never written)
+    would incorrectly fall into the "unclaimed → needs your checkbox" branch forever, since no
+    checkbox exists for a parent to ever populate that with. The fix is entirely at the call site
+    in `session.$code.tsx`: filter to leaf rows only before calling it.
+  - `canToggleFruitEnabled`/`enabledFruitIds` (`group-fruits.ts`) both gained an optional
+    parameter (`totalCount`/an explicit id list) defaulting to today's exact 8-fruit behavior —
+    every existing call site and test kept passing unmodified; only the new custom-group call
+    sites pass explicit values.
+  - Verified live against the real local stack before considering any of this done (this repo's
+    established practice, not optional): anon PATCH `assigned_group` → real permission-denied
+    (confirms the host-only judgment call); anon PATCH `claimed_by`/`completed` on a subtask →
+    still succeeds; anon read of `host_group_names` → visible while a room is active, empty once
+    it ends; a cascade-delete of a parent task → the child's DELETE event actually reaches a
+    second live subscriber (the exact realtime-DELETE gotcha this repo has been bitten by
+    before, now via a cascade instead of a direct delete); the teacher's own two-batch import
+    write pattern (client-generated parent id → children referencing it) round-tripped for
+    real, not just typechecked.
 
 ## Known gaps / next up
 
+- Subtasks are capped at one level by the markdown parser and the UI only — `room_tasks.parent_id`
+  has no DB constraint stopping deeper nesting, so a direct write (Studio, a future feature) could
+  create a grandchild that the app currently has no display/interaction model for.
+- Drag-and-drop reordering is scoped to one sibling group — no re-parenting, no promoting a
+  subtask to top-level or vice versa by dragging. Would need a real design decision (and a
+  `reorderSiblings` rewrite) if that's ever wanted.
+- `host_group_names` has no realtime subscription — a host editing group names in one tab while a
+  room is live elsewhere won't propagate until a participant's next page load.
 - No indicator anywhere of how many auto-restarts are left before a room hits its cap — the host
   only finds out via the "cycles complete" toast when it actually happens.
 - Broadcast announcements have no history — join late (or dismiss the toast, or miss the display
