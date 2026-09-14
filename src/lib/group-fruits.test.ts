@@ -3,6 +3,7 @@ import {
   GROUP_FRUITS,
   canToggleFruitEnabled,
   enabledFruitIds,
+  pickableGroupIds,
   toggleDisabledFruit,
 } from "./group-fruits";
 
@@ -53,5 +54,19 @@ describe("enabledFruitIds", () => {
 
   test("with an explicit id list, filters that set instead of the 8 fruits", () => {
     expect(enabledFruitIds(["a"], ["a", "b", "c"])).toEqual(["b", "c"]);
+  });
+});
+
+describe("pickableGroupIds", () => {
+  test("with no current pick, returns the active set unchanged", () => {
+    expect(pickableGroupIds(["banana", "apple"], null)).toEqual(["banana", "apple"]);
+  });
+
+  test("a current pick that's already active changes nothing", () => {
+    expect(pickableGroupIds(["banana", "apple"], "banana")).toEqual(["banana", "apple"]);
+  });
+
+  test("a current pick the host just disabled is appended so it stays visible", () => {
+    expect(pickableGroupIds(["banana"], "cherry")).toEqual(["banana", "cherry"]);
   });
 });

@@ -17,7 +17,7 @@ import { Footer } from "@/components/Footer";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { badgeColor } from "@/lib/badge-colors";
-import { enabledFruitIds } from "@/lib/group-fruits";
+import { enabledFruitIds, pickableGroupIds } from "@/lib/group-fruits";
 import { resolveGroupSet } from "@/lib/host-groups";
 import { SIGNAL_LABEL, SIGNAL_STYLES } from "@/lib/signal-styles";
 import type { RoomTask } from "@/lib/room";
@@ -402,7 +402,12 @@ function SessionView() {
               // Index into the FULL list, not the filtered one — badgeColor keys off each
               // group's fixed position so its color never shifts just because the host
               // disabled some other group ahead of it.
-              if (!activeGroupIds.includes(group.id)) return null;
+              //
+              // pickableGroupIds (not activeGroupIds directly): a group the host disables AFTER
+              // this participant already picked it must stay visible to them — "don't disrupt
+              // existing assignments" applies here exactly as it does to auto-assign, not just
+              // "don't overwrite," so their own pill can't just disappear out from under them.
+              if (!pickableGroupIds(activeGroupIds, self.fruit).includes(group.id)) return null;
               const isSelf = self.fruit === group.id;
               const color = badgeColor(i);
               return (

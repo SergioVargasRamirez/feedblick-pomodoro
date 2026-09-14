@@ -60,3 +60,15 @@ export function enabledFruitIds(
 ): string[] {
   return allIds.filter((id) => !disabledFruits.includes(id));
 }
+
+// The self-picker (manual, non-auto-assign mode) needs a slightly different set than
+// `enabledFruitIds` alone: a participant who picked a group BEFORE the host disabled it should
+// still see their own pill (and be able to deselect it) — "don't disrupt existing assignments"
+// applies to the manual picker exactly as it already does to auto-assign, it just also needs to
+// stay VISIBLE, not merely un-overwritten. A disabled group with nobody currently holding it
+// (currentId is null or some other group) drops out normally; once they deselect it, it drops
+// out on the next render too, matching "only future picks stop being offered."
+export function pickableGroupIds(activeIds: string[], currentId: string | null): string[] {
+  if (currentId && !activeIds.includes(currentId)) return [...activeIds, currentId];
+  return activeIds;
+}
