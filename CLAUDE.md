@@ -531,6 +531,35 @@ TimerWheel.tsx` is the shared circular countdown widget (SVG ring draining from 
     before, now via a cascade instead of a direct delete); the teacher's own two-batch import
     write pattern (client-generated parent id → children referencing it) round-tripped for
     real, not just typechecked.
+- **Subtask visual marker, collapsible subtasks, Claim→Doing→Done, room tags** (2026-09-14,
+  direct follow-ups to the four-feature to-do-list batch above — "not visually easy to
+  differente from the parent tasks," "is there a way to hide the subtasks?", "can we implement
+  the claim->doing->done pill-level cycle?", "is it possible to add tags to the rooms"):
+  - A subtask row now gets a `CornerDownRight` icon + indent (`TaskTable.tsx`) instead of just
+    padding — plain indentation alone read as too subtle to tell a subtask apart from its parent.
+  - **Hide/collapse subtasks**: a chevron toggle on any parent row with children collapses its
+    subtasks out of the rendered list (`visibleTaskRows`, `task-tree.ts`, tested) — purely local
+    display state (`useState<Set<string>>` inside `TaskTable`), never synced, never a DB column.
+    Numbering and drag-and-drop sibling groups still reason about the full (uncollapsed) `rows`
+    array; only what actually renders changes.
+  - **Claim→Doing→Done, one pill, no separate checkbox**: reuses the existing `claimed_by`/
+    `completed` columns (no migration) — `nextClaimState` (`task-claim.ts`, replacing
+    `nextClaimedBy`, tested) cycles Unclaimed → Doing (mine) → Done (mine) → Unclaimed on each
+    tap, writing both columns together in one update. The checkbox next to a claimed task is
+    gone; the pill IS the completion control now. Unclaimed tasks keep the plain local checkbox
+    unchanged. The host panel's "Claimed by X" label became "Doing — X" / "✓ Done — X" to match.
+  - **Room tags** (`rooms.tags text[]`, migration `20260914110000_room_tags.sql` — no new RLS/
+    GRANT needed, already covered by the existing owner-scoped rooms policy; verified live: anon
+    reads tags on an active room, anon write still denied, teacher write round-trips):
+    `room-tags.ts`'s `addTag`/`removeTag`/`allTags`/`filterRoomsByQuery`/`filterRoomsByTag` (all
+    tested) back a dashboard search box + tag filter-chip bar and a `Tag`-icon Popover in the room
+    panel header for adding/removing a room's own tags. Deliberately flat, no project/room tree —
+    "group them or search for all related rooms" without a hierarchy was the explicit ask.
+  - **Action column right-aligned**: `TaskTable`'s action `<TableCell>` wraps `renderAction`'s
+    output in a `flex justify-end` div — an HTML `<td>`'s width is shared across every row in that
+    column (sized to the widest row), so shorter rows' icons/controls were hugging the left edge
+    instead of lining up with wider rows' — a real reported misalignment, not a per-row styling
+    gap, fixed once centrally rather than patched at both `TaskTable` call sites.
 
 ## Known gaps / next up
 
@@ -546,8 +575,11 @@ TimerWheel.tsx` is the shared circular countdown widget (SVG ring draining from 
   only finds out via the "cycles complete" toast when it actually happens.
 - Broadcast announcements have no history — join late (or dismiss the toast, or miss the display
   banner's 20s window) and it's gone; the host would need to re-send for a latecomer.
-- Task reordering (tasks currently only append; no drag-to-reorder).
-- Room list has no pagination/archiving.
+- Room list has no pagination/archiving (search/tag filtering helps, see above, but there's no
+  archive/hide-ended-rooms concept).
+- No DB constraint stops nesting a subtask under a subtask — enforced only by the markdown
+  parser and the UI (no "+ subtask" control on a depth-1 row); a task written directly via the
+  API could still go deeper.
 - No group-size cap anymore (dropped with `room_badges.seats`) — nothing stops every student
   picking the same fruit manually; auto-assign groups (see above) sidesteps this for a host who
   turns it on, but doesn't cap anything for manual self-assignment.
