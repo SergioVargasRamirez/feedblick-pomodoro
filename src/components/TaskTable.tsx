@@ -11,7 +11,7 @@ import {
 } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical } from "lucide-react";
+import { CornerDownRight, GripVertical } from "lucide-react";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { reorderSiblings, type FlatTaskRow } from "@/lib/task-tree";
@@ -47,18 +47,31 @@ export function TaskTable({
     if (row.depth === 0) topLevelNumbers.set(row.task.id, ++n);
   }
 
+  // The subtask marker (an indented "corner" icon) is drawn by TaskTable itself, not left to
+  // each caller's own renderText — a plain padding-left indent alone read as too subtle to tell
+  // a subtask apart from its parent ("not visually easy to differentiate," direct report).
   const cellsFor = (row: FlatTaskRow, i: number) => (
     <>
-      <TableCell className={cn(row.depth === 1 && "pl-6")}>
-        {renderText ? (
-          renderText(row, i)
-        ) : row.depth === 0 ? (
-          <>
-            {topLevelNumbers.get(row.task.id)}. {row.task.text}
-          </>
-        ) : (
-          row.task.text
-        )}
+      <TableCell>
+        <div className={cn("flex items-start gap-1.5", row.depth === 1 && "pl-5")}>
+          {row.depth === 1 && (
+            <CornerDownRight
+              className="size-3.5 mt-0.5 shrink-0 text-muted-foreground/70"
+              aria-hidden="true"
+            />
+          )}
+          <div className="min-w-0 flex-1">
+            {renderText ? (
+              renderText(row, i)
+            ) : row.depth === 0 ? (
+              <>
+                {topLevelNumbers.get(row.task.id)}. {row.task.text}
+              </>
+            ) : (
+              row.task.text
+            )}
+          </div>
+        </div>
       </TableCell>
       <TableCell className="w-px whitespace-nowrap">{renderAction(row, i)}</TableCell>
     </>

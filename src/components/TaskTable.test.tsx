@@ -39,15 +39,16 @@ describe("TaskTable", () => {
     expect(getByText("2. Solve exercises")).toBeInTheDocument();
   });
 
-  test("a depth-1 row is indented (via pl-6 on its cell) and unnumbered", () => {
+  test("a depth-1 row is indented and marked with a subtask icon; a depth-0 row is not", () => {
     const parent = task("a", "Parent");
     const child = task("a-1", "Child", { parent_id: "a" });
     const rows = [row(parent, 0, [child]), row(child, 1)];
     const { container } = render(<TaskTable rows={rows} renderAction={() => null} />);
-    const cells = container.querySelectorAll("td");
-    // First row: [text cell, action cell]; second row: [indented text cell, action cell].
-    expect(cells[0].className).not.toContain("pl-6");
-    expect(cells[2].className).toContain("pl-6");
+    const wrappers = container.querySelectorAll("td:first-child > div");
+    expect(wrappers[0].className).not.toContain("pl-5");
+    expect(wrappers[0].querySelector("svg")).toBeNull();
+    expect(wrappers[1].className).toContain("pl-5");
+    expect(wrappers[1].querySelector("svg")).not.toBeNull();
   });
 
   test("renderText overrides the default numbered text", () => {
