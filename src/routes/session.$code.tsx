@@ -430,7 +430,7 @@ function SessionView() {
 
       <div>
         <p className="text-sm font-medium mb-2">In this room</p>
-        <RosterTable students={students} />
+        <RosterTable students={students} groups={groupOptions} />
       </div>
 
       <Footer variant="minimal" />

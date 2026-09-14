@@ -11,6 +11,7 @@ import { ChevronUp, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { badgeColor } from "@/lib/badge-colors";
 import { GROUP_FRUITS } from "@/lib/group-fruits";
+import type { GroupOption } from "@/lib/host-groups";
 import { SIGNAL_LABEL, SIGNAL_STYLES } from "@/lib/signal-styles";
 import type { PresentStudent } from "@/lib/room-presence";
 
@@ -20,12 +21,18 @@ type SortField = "name" | "group";
 // table of students/groups the students see" — one component, not two copies that could drift.
 // `showSignal` is teacher-panel-only ("I want to see who pressed what in the table as a
 // badge") — the student view doesn't pass it, so the roster there stays Name/Group only.
+// `groups` defaults to the fixed 8 fruits (same default-preserving pattern as
+// enabledFruitIds/canToggleFruitEnabled in group-fruits.ts) — both real callers now pass their
+// own resolveGroupSet() result, so a host's custom group names show up here too instead of every
+// student reading as "—" the moment a room stops using the fruits.
 export function RosterTable({
   students,
   showSignal = false,
+  groups = GROUP_FRUITS,
 }: {
   students: PresentStudent[];
   showSignal?: boolean;
+  groups?: GroupOption[];
 }) {
   const [sortBy, setSortBy] = useState<SortField>("name");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
@@ -42,8 +49,8 @@ export function RosterTable({
   // meaningfully before or after any actual group name.
   const roster = useMemo(() => {
     const withGroup = students.map((s) => {
-      const groupIndex = GROUP_FRUITS.findIndex((f) => f.id === s.fruit);
-      return { ...s, group: groupIndex >= 0 ? GROUP_FRUITS[groupIndex] : null, groupIndex };
+      const groupIndex = groups.findIndex((f) => f.id === s.fruit);
+      return { ...s, group: groupIndex >= 0 ? groups[groupIndex] : null, groupIndex };
     });
     const dir = sortDir === "asc" ? 1 : -1;
     return [...withGroup].sort((a, b) => {
@@ -55,7 +62,7 @@ export function RosterTable({
       if (!b.group) return -1;
       return dir * a.group.label.localeCompare(b.group.label);
     });
-  }, [students, sortBy, sortDir]);
+  }, [students, sortBy, sortDir, groups]);
 
   if (students.length === 0) {
     return <p className="text-sm text-muted-foreground">No one here yet.</p>;
@@ -98,7 +105,7 @@ export function RosterTable({
                     badgeColor(s.groupIndex).idle,
                   )}
                 >
-                  <span aria-hidden="true">{s.group.emoji}</span>
+                  {s.group.emoji && <span aria-hidden="true">{s.group.emoji}</span>}
                   {s.group.label}
                 </span>
               ) : (

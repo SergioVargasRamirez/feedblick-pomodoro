@@ -65,4 +65,14 @@ describe("RosterTable", () => {
     const { queryByText } = render(<RosterTable students={students} />);
     expect(queryByText("Signal")).not.toBeInTheDocument();
   });
+
+  test("with a custom `groups` list, resolves group labels from it instead of the 8 fruits", () => {
+    const students = [student("Amy", "team-a")];
+    const groups = [{ id: "team-a", label: "Team A" }];
+    const { getByText, queryByText } = render(<RosterTable students={students} groups={groups} />);
+    expect(getByText("Team A")).toBeInTheDocument();
+    // Regression check: without the custom `groups` list, "team-a" wouldn't match anything in
+    // the fixed 8 fruits and Amy would show "—" instead.
+    expect(queryByText("—")).not.toBeInTheDocument();
+  });
 });

@@ -800,7 +800,7 @@ function RoomControl() {
                 );
               })}
             </div>
-            <RosterTable students={students} showSignal />
+            <RosterTable students={students} showSignal groups={groupOptions} />
           </CardContent>
         </Card>
       </main>
