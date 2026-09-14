@@ -61,35 +61,72 @@ export type Database = {
         };
         Relationships: [];
       };
+      host_group_names: {
+        Row: {
+          created_at: string;
+          id: string;
+          label: string;
+          position: number;
+          teacher_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          id?: string;
+          label: string;
+          position?: number;
+          teacher_id: string;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          label?: string;
+          position?: number;
+          teacher_id?: string;
+        };
+        Relationships: [];
+      };
       room_tasks: {
         Row: {
+          assigned_group: string | null;
           claimed_by: string | null;
           completed: boolean;
           created_at: string;
           id: string;
+          parent_id: string | null;
           position: number;
           room_id: string;
           text: string;
         };
         Insert: {
+          assigned_group?: string | null;
           claimed_by?: string | null;
           completed?: boolean;
           created_at?: string;
           id?: string;
+          parent_id?: string | null;
           position?: number;
           room_id: string;
           text: string;
         };
         Update: {
+          assigned_group?: string | null;
           claimed_by?: string | null;
           completed?: boolean;
           created_at?: string;
           id?: string;
+          parent_id?: string | null;
           position?: number;
           room_id?: string;
           text?: string;
         };
         Relationships: [
+          {
+            foreignKeyName: "room_tasks_parent_id_fkey";
+            columns: ["parent_id"];
+            isOneToOne: false;
+            referencedRelation: "room_tasks";
+            referencedColumns: ["id"];
+          },
           {
             foreignKeyName: "room_tasks_room_id_fkey";
             columns: ["room_id"];
