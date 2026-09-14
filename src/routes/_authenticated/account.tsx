@@ -7,6 +7,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { ArrowLeft, UserRound, UserX } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { DeleteAccountDialog } from "@/components/DeleteAccountDialog";
+import { HostGroupNamesEditor } from "@/components/HostGroupNamesEditor";
 import { Footer } from "@/components/Footer";
 
 export const Route = createFileRoute("/_authenticated/account")({
@@ -44,6 +45,19 @@ function AccountPage() {
           </CardHeader>
           <CardContent>
             <p className="text-sm">{user.email}</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Groups</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Once you add a custom group here, it replaces the default fruit groups in every room
+              you run. Leave this empty to keep the defaults.
+            </p>
+            <HostGroupNamesEditor teacherId={user.id} />
           </CardContent>
         </Card>
 

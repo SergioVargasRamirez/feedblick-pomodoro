@@ -41,17 +41,29 @@ import {
 } from "@/components/ui/dialog";
 import { phaseEmoji } from "@/components/PhaseIcon";
 import { Footer } from "@/components/Footer";
-import { sessionUrl, type Room } from "@/lib/room";
+import { MarkdownTaskImportDialog } from "@/components/MarkdownTaskImportDialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { sessionUrl, type Room, type RoomTask } from "@/lib/room";
 import { badgeColor } from "@/lib/badge-colors";
-import { GROUP_FRUITS, canToggleFruitEnabled, toggleDisabledFruit } from "@/lib/group-fruits";
+import { canToggleFruitEnabled, enabledFruitIds, toggleDisabledFruit } from "@/lib/group-fruits";
+import { resolveGroupSet } from "@/lib/host-groups";
 import { SIGNAL_LABEL } from "@/lib/signal-styles";
 import { cn } from "@/lib/utils";
 import { useRoom, useRoomTasks } from "@/hooks/use-room";
+import { useHostGroupNames } from "@/hooks/use-host-group-names";
 import {
   useRoomPresenceChannel,
   summarizeSignals,
   broadcastAnnouncement,
 } from "@/lib/room-presence";
+import { flattenTaskTree, subtaskProgress } from "@/lib/task-tree";
+import type { ParsedTask } from "@/lib/markdown-tasks";
 import {
   buildExtend,
   buildPause,
@@ -91,13 +103,17 @@ function openDisplayWindow(url: string) {
 
 function RoomControl() {
   const { roomId } = Route.useParams();
+  const { user } = Route.useRouteContext();
   const { room, loading } = useRoom(roomId);
   const { tasks } = useRoomTasks(roomId);
   const { channel, students } = useRoomPresenceChannel(room?.code);
+  const { groups: hostGroupNames } = useHostGroupNames(user.id);
   const [newTask, setNewTask] = useState("");
   const [nameInput, setNameInput] = useState("");
   const [announceOpen, setAnnounceOpen] = useState(false);
   const [announceText, setAnnounceText] = useState("");
+  const [addingSubtaskFor, setAddingSubtaskFor] = useState<string | null>(null);
+  const [subtaskText, setSubtaskText] = useState("");
 
   // Hooks must run unconditionally every render, so this runs against a fallback idle shape
   // before we know whether `room` has loaded yet — the loading-guard return below happens
@@ -186,6 +202,21 @@ function RoomControl() {
 
   const signalCounts = summarizeSignals(students);
 
+  const taskRows = flattenTaskTree(tasks);
+  const topLevelNumbers = new Map<string, number>();
+  {
+    let n = 0;
+    for (const row of taskRows) if (row.depth === 0) topLevelNumbers.set(row.task.id, ++n);
+  }
+
+  // The default-preserving path: a host with no custom groups sees exactly the 8 fruits.
+  const groupOptions = resolveGroupSet(hostGroupNames);
+  const activeGroupIds = enabledFruitIds(
+    room.disabled_fruits,
+    groupOptions.map((g) => g.id),
+  );
+  const activeGroupOptions = groupOptions.filter((g) => activeGroupIds.includes(g.id));
+
   // One cassette-style transport button does start/pause/resume — transportAction (timer.ts)
   // decides which of the three it means right now; this just dispatches to the matching update.
   const action = transportAction(timer);
@@ -236,17 +267,19 @@ function RoomControl() {
 
   // "Reduce the number of groups in a session" — refuses to disable the last one standing
   // (canToggleFruitEnabled, group-fruits.ts) rather than leaving nobody able to pick a group.
-  const onToggleFruitEnabled = (fruitId: string) => {
-    if (!canToggleFruitEnabled(room.disabled_fruits, fruitId)) return;
-    updateRoom({ disabled_fruits: toggleDisabledFruit(room.disabled_fruits, fruitId) });
+  const onToggleFruitEnabled = (groupId: string) => {
+    if (!canToggleFruitEnabled(room.disabled_fruits, groupId, groupOptions.length)) return;
+    updateRoom({ disabled_fruits: toggleDisabledFruit(room.disabled_fruits, groupId) });
   };
+
+  const topLevelTasks = tasks.filter((t) => !t.parent_id);
 
   const onAddTask = async () => {
     const text = newTask.trim();
     if (!text) return;
     const { error } = await supabase
       .from("room_tasks")
-      .insert({ room_id: room.id, text, position: tasks.length });
+      .insert({ room_id: room.id, text, position: topLevelTasks.length });
     if (error) toast.error(error.message);
     else setNewTask("");
   };
@@ -254,6 +287,69 @@ function RoomControl() {
   const onDeleteTask = async (id: string) => {
     const { error } = await supabase.from("room_tasks").delete().eq("id", id);
     if (error) toast.error(error.message);
+  };
+
+  // Subtasks are creatable directly — not only via markdown import — so this is a standalone
+  // way to build the same task/subtask structure by hand.
+  const onAddSubtask = async (parentId: string, text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    const siblingCount = tasks.filter((t) => t.parent_id === parentId).length;
+    const { error } = await supabase
+      .from("room_tasks")
+      .insert({ room_id: room.id, text: trimmed, parent_id: parentId, position: siblingCount });
+    if (error) toast.error(error.message);
+  };
+
+  // Host-only (see the migration's own comment) — assigning a whole task cluster to a group is
+  // a planning decision, not something a participant initiates the way claiming is.
+  const onAssignGroup = async (taskId: string, groupId: string | null) => {
+    const { error } = await supabase
+      .from("room_tasks")
+      .update({ assigned_group: groupId })
+      .eq("id", taskId);
+    if (error) toast.error(error.message);
+  };
+
+  const onReorderTasks = async (patches: Array<{ id: string; position: number }>) => {
+    const results = await Promise.all(
+      patches.map((p) =>
+        supabase.from("room_tasks").update({ position: p.position }).eq("id", p.id),
+      ),
+    );
+    const failed = results.find((r) => r.error);
+    if (failed?.error) toast.error(failed.error.message);
+  };
+
+  // Client-generates ids for the parent rows so the child insert can reference them without a
+  // round trip in between — one batch insert for parents, then one for children. No transaction:
+  // a rare failure between the two leaves a visible, retriable partial state (parents with no
+  // children yet), not silent corruption.
+  const onImportTasks = async (parsed: ParsedTask[]) => {
+    const parentRows = parsed.map((p, i) => ({
+      id: crypto.randomUUID(),
+      room_id: room.id,
+      text: p.text,
+      position: topLevelTasks.length + i,
+    }));
+    const { error: parentErr } = await supabase.from("room_tasks").insert(parentRows);
+    if (parentErr) {
+      toast.error(parentErr.message);
+      return;
+    }
+    const childRows = parsed.flatMap((p, i) =>
+      p.subtasks.map((text, j) => ({
+        room_id: room.id,
+        text,
+        parent_id: parentRows[i].id,
+        position: j,
+      })),
+    );
+    if (childRows.length > 0) {
+      const { error: childErr } = await supabase.from("room_tasks").insert(childRows);
+      if (childErr) toast.error(childErr.message);
+    }
+    toast.success(`Imported ${parentRows.length} task${parentRows.length === 1 ? "" : "s"}.`);
   };
 
   return (
@@ -435,26 +531,94 @@ function RoomControl() {
                 <Button size="icon" variant="outline" onClick={onAddTask}>
                   <Plus className="size-4" />
                 </Button>
+                <MarkdownTaskImportDialog onImport={onImportTasks} />
               </div>
               <TaskTable
-                tasks={tasks}
-                renderText={(t, i) => (
-                  <>
-                    {i + 1}. {t.text}
-                    {room.claiming_enabled && t.claimed_by && (
-                      <span className="ml-2 text-xs text-muted-foreground">
-                        Claimed by {t.claimed_by}
+                rows={taskRows}
+                reorder={{ onReorder: onReorderTasks }}
+                renderText={(row, i) => {
+                  const isParent = row.children.length > 0;
+                  const progress = isParent ? subtaskProgress(row.children) : null;
+                  return (
+                    <div>
+                      <span>
+                        {row.depth === 0 ? `${topLevelNumbers.get(row.task.id)}. ` : ""}
+                        {row.task.text}
                       </span>
+                      {progress && (
+                        <span className="ml-2 text-xs text-muted-foreground">
+                          {progress.done}/{progress.total} done
+                        </span>
+                      )}
+                      {room.claiming_enabled && !isParent && row.task.claimed_by && (
+                        <span className="ml-2 text-xs text-muted-foreground">
+                          Claimed by {row.task.claimed_by}
+                        </span>
+                      )}
+                      {addingSubtaskFor === row.task.id && (
+                        <div className="mt-1 flex items-center gap-1">
+                          <Input
+                            autoFocus
+                            value={subtaskText}
+                            onChange={(e) => setSubtaskText(e.target.value)}
+                            onKeyDown={async (e) => {
+                              if (e.key !== "Enter") return;
+                              await onAddSubtask(row.task.id, subtaskText);
+                              setSubtaskText("");
+                              setAddingSubtaskFor(null);
+                            }}
+                            onBlur={() => setAddingSubtaskFor(null)}
+                            placeholder="Subtask…"
+                            className="h-7 text-xs"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  );
+                }}
+                renderAction={(row) => (
+                  <div className="flex items-center gap-1">
+                    {row.depth === 0 && (
+                      <button
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => {
+                          setAddingSubtaskFor(row.task.id);
+                          setSubtaskText("");
+                        }}
+                        className="text-muted-foreground hover:text-foreground"
+                        title="Add subtask"
+                      >
+                        <Plus className="size-3.5" />
+                      </button>
                     )}
-                  </>
-                )}
-                renderAction={(t) => (
-                  <button
-                    onClick={() => onDeleteTask(t.id)}
-                    className="text-muted-foreground hover:text-destructive"
-                  >
-                    <Trash2 className="size-4" />
-                  </button>
+                    {row.children.length > 0 && (
+                      <Select
+                        value={row.task.assigned_group ?? "unassigned"}
+                        onValueChange={(v) =>
+                          onAssignGroup(row.task.id, v === "unassigned" ? null : v)
+                        }
+                      >
+                        <SelectTrigger className="h-7 w-28 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="unassigned">Unassigned</SelectItem>
+                          {activeGroupOptions.map((g) => (
+                            <SelectItem key={g.id} value={g.id}>
+                              {g.emoji ? `${g.emoji} ` : ""}
+                              {g.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                    <button
+                      onClick={() => onDeleteTask(row.task.id)}
+                      className="text-muted-foreground hover:text-destructive"
+                    >
+                      <Trash2 className="size-4" />
+                    </button>
+                  </div>
                 )}
               />
             </CardContent>
@@ -524,13 +688,13 @@ function RoomControl() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex flex-wrap gap-2">
-              {GROUP_FRUITS.map((fruit, i) => {
-                const isEnabled = !room.disabled_fruits.includes(fruit.id);
+              {groupOptions.map((group, i) => {
+                const isEnabled = !room.disabled_fruits.includes(group.id);
                 const color = badgeColor(i);
                 return (
                   <button
-                    key={fruit.id}
-                    onClick={() => onToggleFruitEnabled(fruit.id)}
+                    key={group.id}
+                    onClick={() => onToggleFruitEnabled(group.id)}
                     title={
                       isEnabled ? "Click to remove this group" : "Click to bring this group back"
                     }
@@ -541,7 +705,7 @@ function RoomControl() {
                         : "border-muted-foreground/20 text-muted-foreground opacity-50 grayscale",
                     )}
                   >
-                    <span aria-hidden="true">{fruit.emoji}</span> {fruit.label}
+                    {group.emoji && <span aria-hidden="true">{group.emoji}</span>} {group.label}
                   </button>
                 );
               })}

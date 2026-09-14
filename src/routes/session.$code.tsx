@@ -17,10 +17,12 @@ import { Footer } from "@/components/Footer";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { badgeColor } from "@/lib/badge-colors";
-import { GROUP_FRUITS, enabledFruitIds } from "@/lib/group-fruits";
+import { enabledFruitIds } from "@/lib/group-fruits";
+import { resolveGroupSet } from "@/lib/host-groups";
 import { SIGNAL_LABEL, SIGNAL_STYLES } from "@/lib/signal-styles";
 import type { RoomTask } from "@/lib/room";
 import { useRoomByCode, useRoomTasks } from "@/hooks/use-room";
+import { useHostGroupNames } from "@/hooks/use-host-group-names";
 import {
   useRoomPresenceChannel,
   trackPresence,
@@ -29,6 +31,7 @@ import {
   type StudentPresence,
 } from "@/lib/room-presence";
 import { canSignalDone, nextClaimedBy } from "@/lib/task-claim";
+import { flattenTaskTree, subtaskProgress } from "@/lib/task-tree";
 import { phaseLabel, useRoomTimerDisplay } from "@/lib/timer";
 
 export const Route = createFileRoute("/session/$code")({
@@ -60,6 +63,7 @@ function SessionView() {
   const { channel, students, synced, announcement } = useRoomPresenceChannel(
     room?.status === "active" ? room.code : undefined,
   );
+  const { groups: hostGroupNames } = useHostGroupNames(room?.teacher_id);
   const timer = useRoomTimerDisplay(room ?? IDLE_TIMER);
 
   const [name, setName] = useState("");
@@ -119,15 +123,24 @@ function SessionView() {
     });
   }, [announcement]);
 
+  // The default-preserving path: a host with no custom groups (host-groups.ts) sees exactly the
+  // 8 fruits, unchanged. This same resolved set drives the picker below, auto-assign, AND the
+  // task-group-assignment display, since "group" is one overloaded concept across the app.
+  const groupOptions = resolveGroupSet(hostGroupNames);
+  const activeGroupIds = enabledFruitIds(
+    room?.disabled_fruits ?? [],
+    groupOptions.map((g) => g.id),
+  );
+
   // When the host has auto-assign on, a student who's identified themselves but has no group
   // yet gets one picked for them instead of using the manual picker. Only considers groups the
   // host hasn't disabled ("reduce the number of groups in a session"). Self-limiting: once
   // self.fruit is set, this condition is false on every future run, so it can't re-fire or
   // fight a student who picks manually right after (auto-assign only applies to fruit === null).
-  const activeFruitIds = enabledFruitIds(room?.disabled_fruits ?? []);
+  // pickAutoAssignFruit needs zero changes for this — it already takes a plain id list.
   useEffect(() => {
     if (!room?.auto_assign_groups || !identifiedName || self.fruit || !synced) return;
-    const fruit = pickAutoAssignFruit(students, activeFruitIds);
+    const fruit = pickAutoAssignFruit(students, activeGroupIds);
     setSelf((prev) => ({ ...prev, fruit }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [room?.auto_assign_groups, identifiedName, self.fruit, synced, students]);
@@ -193,6 +206,18 @@ function SessionView() {
   const tasksForClaiming = room.claiming_enabled
     ? tasks
     : tasks.map((t) => ({ ...t, claimed_by: null, completed: false }));
+  const taskRows = flattenTaskTree(tasksForClaiming);
+  const topLevelNumbers = new Map<string, number>();
+  {
+    let n = 0;
+    for (const row of taskRows) if (row.depth === 0) topLevelNumbers.set(row.task.id, ++n);
+  }
+  // canSignalDone only ever means "have YOU finished your own actionable tasks" — a parent row
+  // has no individual claim/checkbox of its own (its completion is derived from its children,
+  // see subtaskProgress below), so feeding it in would incorrectly count as "unclaimed, and my
+  // checkbox for it is unset" forever. Leaf rows (standalone tasks and subtasks alike) are the
+  // only ones that were ever individually actionable, so those are the only ones that count.
+  const leafTasksForDone = taskRows.filter((r) => r.children.length === 0).map((r) => r.task);
 
   return (
     <div className="relative isolate min-h-screen bg-background px-4 py-6 space-y-6 max-w-3xl mx-auto">
@@ -220,19 +245,50 @@ function SessionView() {
           </CardHeader>
           <CardContent>
             <TaskTable
-              tasks={tasksForClaiming}
-              renderText={(t, i) => {
+              rows={taskRows}
+              renderText={(row, i) => {
+                const isParent = row.children.length > 0;
+                if (isParent) {
+                  const progress = subtaskProgress(row.children);
+                  return (
+                    <span>
+                      {topLevelNumbers.get(row.task.id)}. {row.task.text}
+                      <span className="ml-2 text-xs text-muted-foreground">
+                        {progress.done}/{progress.total} done
+                      </span>
+                    </span>
+                  );
+                }
+                const t = row.task;
                 const isDone = t.claimed_by ? t.completed : checked.has(t.id);
                 return (
                   <label
                     htmlFor={`task-${t.id}`}
                     className={cn(isDone && "line-through text-muted-foreground")}
                   >
-                    {i + 1}. {t.text}
+                    {row.depth === 0 ? `${topLevelNumbers.get(t.id)}. ` : ""}
+                    {t.text}
                   </label>
                 );
               }}
-              renderAction={(t) => {
+              renderAction={(row) => {
+                const isParent = row.children.length > 0;
+                if (isParent) {
+                  const assigned = groupOptions.find((g) => g.id === row.task.assigned_group);
+                  return (
+                    <span className="text-xs text-muted-foreground">
+                      {assigned ? (
+                        <>
+                          {assigned.emoji ? `${assigned.emoji} ` : ""}
+                          {assigned.label}
+                        </>
+                      ) : (
+                        "Unassigned"
+                      )}
+                    </span>
+                  );
+                }
+                const t = row.task;
                 const isMine = t.claimed_by === identifiedName;
                 const isSomeoneElses = !!t.claimed_by && !isMine;
                 return (
@@ -288,7 +344,7 @@ function SessionView() {
             // but an unclaimed task (your checkbox) or one you claimed yourself (the shared
             // completed flag) both have to be cleared first. canSignalDone (task-claim.ts).
             const disabled =
-              kind === "done" && !canSignalDone(tasksForClaiming, checked, identifiedName);
+              kind === "done" && !canSignalDone(leafTasksForDone, checked, identifiedName);
             return (
               <button
                 key={kind}
@@ -330,10 +386,14 @@ function SessionView() {
             {self.fruit ? (
               <>
                 Your group:{" "}
-                <span aria-hidden="true">
-                  {GROUP_FRUITS.find((f) => f.id === self.fruit)?.emoji}
-                </span>{" "}
-                {GROUP_FRUITS.find((f) => f.id === self.fruit)?.label}
+                {(() => {
+                  const g = groupOptions.find((g) => g.id === self.fruit);
+                  return (
+                    <>
+                      {g?.emoji && <span aria-hidden="true">{g.emoji}</span>} {g?.label}
+                    </>
+                  );
+                })()}
               </>
             ) : (
               "Waiting to be assigned a group…"
@@ -341,23 +401,23 @@ function SessionView() {
           </p>
         ) : (
           <div className="flex flex-wrap gap-2 pt-1">
-            {GROUP_FRUITS.map((fruit, i) => {
+            {groupOptions.map((group, i) => {
               // Index into the FULL list, not the filtered one — badgeColor keys off each
-              // fruit's fixed position so its color never shifts just because the host
+              // group's fixed position so its color never shifts just because the host
               // disabled some other group ahead of it.
-              if (!activeFruitIds.includes(fruit.id)) return null;
-              const isSelf = self.fruit === fruit.id;
+              if (!activeGroupIds.includes(group.id)) return null;
+              const isSelf = self.fruit === group.id;
               const color = badgeColor(i);
               return (
                 <button
-                  key={fruit.id}
-                  onClick={() => toggleFruit(fruit.id)}
+                  key={group.id}
+                  onClick={() => toggleFruit(group.id)}
                   className={cn(
                     "rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors",
                     isSelf ? color.active : color.idle,
                   )}
                 >
-                  <span aria-hidden="true">{fruit.emoji}</span> {fruit.label}
+                  {group.emoji && <span aria-hidden="true">{group.emoji}</span>} {group.label}
                 </button>
               );
             })}
