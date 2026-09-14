@@ -30,7 +30,7 @@ import {
   type SignalKind,
   type StudentPresence,
 } from "@/lib/room-presence";
-import { canSignalDone, nextClaimedBy } from "@/lib/task-claim";
+import { canSignalDone, nextClaimState } from "@/lib/task-claim";
 import { flattenTaskTree, subtaskProgress } from "@/lib/task-tree";
 import { phaseLabel, useRoomTimerDisplay } from "@/lib/timer";
 
@@ -145,22 +145,14 @@ function SessionView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [room?.auto_assign_groups, identifiedName, self.fruit, synced, students]);
 
-  const onClaimTask = async (task: RoomTask) => {
+  // One tap cycles Unclaimed -> Doing -> Done -> back to Unclaimed (nextClaimState, task-claim.ts)
+  // — replaces the old separate claim-pill + checkbox pair for a claimed task with a single
+  // control, both columns written together in one round trip.
+  const onTapClaim = async (task: RoomTask) => {
     if (!identifiedName) return;
     const { error } = await supabase
       .from("room_tasks")
-      .update({ claimed_by: nextClaimedBy(task.claimed_by, identifiedName) })
-      .eq("id", task.id);
-    if (error) toast.error(error.message);
-  };
-
-  // Only reachable for a task YOU claimed — see the checkbox branch in the render below.
-  // Writing this to Postgres (not local state) is the point: once a task has an owner,
-  // "completed" is a fact about the task itself, and everyone else should see it change.
-  const onToggleCompleted = async (task: RoomTask) => {
-    const { error } = await supabase
-      .from("room_tasks")
-      .update({ completed: !task.completed })
+      .update(nextClaimState(task, identifiedName))
       .eq("id", task.id);
     if (error) toast.error(error.message);
   };
@@ -290,41 +282,46 @@ function SessionView() {
                 }
                 const t = row.task;
                 const isMine = t.claimed_by === identifiedName;
-                const isSomeoneElses = !!t.claimed_by && !isMine;
+                // The pill IS the completion control for a claimed task now — no separate
+                // checkbox alongside it. Unclaimed tasks keep the plain local checkbox exactly
+                // as before.
+                const label = !t.claimed_by
+                  ? "Claim"
+                  : t.completed
+                    ? `✓ ${t.claimed_by}`
+                    : t.claimed_by;
+                const title = !t.claimed_by
+                  ? "Claim this task"
+                  : isMine
+                    ? t.completed
+                      ? "Tap to release this task"
+                      : "Tap to mark done"
+                    : `Claimed by ${t.claimed_by} — tap to claim it yourself`;
                 return (
                   <div className="flex items-center gap-1.5">
                     {room.claiming_enabled && (
                       <button
-                        onClick={() => onClaimTask(t)}
+                        onClick={() => onTapClaim(t)}
                         disabled={!identifiedName}
-                        title={
-                          isMine
-                            ? "Release this task"
-                            : t.claimed_by
-                              ? `Claimed by ${t.claimed_by} — tap to claim it yourself`
-                              : "Claim this task"
-                        }
+                        title={title}
                         className={cn(
                           "rounded-full border px-2 py-0.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50",
-                          isMine
-                            ? "border-primary bg-primary/10 text-primary"
-                            : t.claimed_by
-                              ? "border-transparent bg-muted text-muted-foreground"
-                              : "border-muted-foreground/30 text-muted-foreground hover:border-foreground hover:text-foreground",
+                          !t.claimed_by
+                            ? "border-muted-foreground/30 text-muted-foreground hover:border-foreground hover:text-foreground"
+                            : t.completed
+                              ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+                              : isMine
+                                ? "border-primary bg-primary/10 text-primary"
+                                : "border-transparent bg-muted text-muted-foreground",
                         )}
                       >
-                        {t.claimed_by ?? "Claim"}
+                        {label}
                       </button>
                     )}
-                    {/* Once someone else has claimed this task, only they can mark it complete
-                        — hiding the checkbox instead of a real permission check, since
-                        participants have no verifiable identity to enforce one against. */}
-                    {!isSomeoneElses && (
+                    {!t.claimed_by && (
                       <Checkbox
-                        checked={t.claimed_by ? t.completed : checked.has(t.id)}
-                        onCheckedChange={() =>
-                          t.claimed_by ? onToggleCompleted(t) : toggleTask(t.id)
-                        }
+                        checked={checked.has(t.id)}
+                        onCheckedChange={() => toggleTask(t.id)}
                         id={`task-${t.id}`}
                       />
                     )}

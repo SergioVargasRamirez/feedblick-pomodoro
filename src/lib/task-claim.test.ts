@@ -1,21 +1,52 @@
 import { describe, expect, test } from "bun:test";
-import { canSignalDone, nextClaimedBy } from "./task-claim";
+import { canSignalDone, nextClaimState } from "./task-claim";
 
 function task(id: string, claimed_by: string | null, completed: boolean) {
   return { id, claimed_by, completed };
 }
 
-describe("nextClaimedBy", () => {
-  test("claiming an unclaimed task sets it to the actor's name", () => {
-    expect(nextClaimedBy(null, "Alice")).toBe("Alice");
+describe("nextClaimState", () => {
+  test("claiming an unclaimed task starts it at Doing", () => {
+    expect(nextClaimState({ claimed_by: null, completed: false }, "Alice")).toEqual({
+      claimed_by: "Alice",
+      completed: false,
+    });
   });
 
-  test("tapping your own claim again releases it", () => {
-    expect(nextClaimedBy("Alice", "Alice")).toBeNull();
+  test("tapping your own task while Doing marks it Done", () => {
+    expect(nextClaimState({ claimed_by: "Alice", completed: false }, "Alice")).toEqual({
+      claimed_by: "Alice",
+      completed: true,
+    });
   });
 
-  test("tapping someone else's claim reassigns it to you — no lock", () => {
-    expect(nextClaimedBy("Alice", "Bob")).toBe("Bob");
+  test("tapping your own task while Done releases it back to Unclaimed", () => {
+    expect(nextClaimState({ claimed_by: "Alice", completed: true }, "Alice")).toEqual({
+      claimed_by: null,
+      completed: false,
+    });
+  });
+
+  test("tapping someone else's task takes it over, starting fresh at Doing — no lock", () => {
+    expect(nextClaimState({ claimed_by: "Alice", completed: false }, "Bob")).toEqual({
+      claimed_by: "Bob",
+      completed: false,
+    });
+    // Even if it was already Done — taking it over resets it to Doing under the new claimant.
+    expect(nextClaimState({ claimed_by: "Alice", completed: true }, "Bob")).toEqual({
+      claimed_by: "Bob",
+      completed: false,
+    });
+  });
+
+  test("the full cycle returns to its starting point", () => {
+    let state = { claimed_by: null as string | null, completed: false };
+    state = nextClaimState(state, "Alice");
+    expect(state).toEqual({ claimed_by: "Alice", completed: false });
+    state = nextClaimState(state, "Alice");
+    expect(state).toEqual({ claimed_by: "Alice", completed: true });
+    state = nextClaimState(state, "Alice");
+    expect(state).toEqual({ claimed_by: null, completed: false });
   });
 });
 

@@ -552,7 +552,7 @@ function RoomControl() {
                       )}
                       {room.claiming_enabled && !isParent && row.task.claimed_by && (
                         <span className="ml-2 text-xs text-muted-foreground">
-                          Claimed by {row.task.claimed_by}
+                          {row.task.completed ? "✓ Done" : "Doing"} — {row.task.claimed_by}
                         </span>
                       )}
                       {addingSubtaskFor === row.task.id && (
