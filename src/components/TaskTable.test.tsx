@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { render } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { TaskTable } from "./TaskTable";
 import type { FlatTaskRow } from "@/lib/task-tree";
 import type { RoomTask } from "@/lib/room";
@@ -46,9 +47,34 @@ describe("TaskTable", () => {
     const { container } = render(<TaskTable rows={rows} renderAction={() => null} />);
     const wrappers = container.querySelectorAll("td:first-child > div");
     expect(wrappers[0].className).not.toContain("pl-5");
-    expect(wrappers[0].querySelector("svg")).toBeNull();
     expect(wrappers[1].className).toContain("pl-5");
     expect(wrappers[1].querySelector("svg")).not.toBeNull();
+  });
+
+  test("a parent row (one with children) gets a collapse toggle; a childless row doesn't", () => {
+    const parent = task("a", "Parent");
+    const child = task("a-1", "Child", { parent_id: "a" });
+    const rows = [row(parent, 0, [child]), row(child, 1), row(task("b", "Standalone"))];
+    const { getByLabelText, queryByLabelText } = render(
+      <TaskTable rows={rows} renderAction={() => null} />,
+    );
+    expect(getByLabelText("Hide subtasks")).toBeInTheDocument();
+    expect(queryByLabelText("Show subtasks")).not.toBeInTheDocument();
+  });
+
+  test("clicking the collapse toggle hides the parent's subtasks, keeping the parent itself", async () => {
+    const parent = task("a", "Parent");
+    const child = task("a-1", "Child", { parent_id: "a" });
+    const rows = [row(parent, 0, [child]), row(child, 1)];
+    const { getByLabelText, getByText, queryByText } = render(
+      <TaskTable rows={rows} renderAction={() => null} />,
+    );
+    expect(getByText("Child")).toBeInTheDocument();
+    await userEvent.click(getByLabelText("Hide subtasks"));
+    expect(queryByText("Child")).not.toBeInTheDocument();
+    expect(getByText("1. Parent")).toBeInTheDocument();
+    await userEvent.click(getByLabelText("Show subtasks"));
+    expect(getByText("Child")).toBeInTheDocument();
   });
 
   test("renderText overrides the default numbered text", () => {

@@ -36,6 +36,18 @@ export function flattenTaskTree(tasks: RoomTask[]): FlatTaskRow[] {
   return rows;
 }
 
+// "Hide the subtasks" — a purely local, ephemeral display preference (never synced, not a DB
+// column), so a parent's children are simply skipped from the rendered rows while its own row
+// stays put with its normal children/progress data intact (collapsing never affects numbering,
+// drag-and-drop sibling groups, or anything else that reads the full `rows` array — only what
+// TaskTable actually iterates to render).
+export function visibleTaskRows(
+  rows: FlatTaskRow[],
+  collapsedParentIds: Set<string>,
+): FlatTaskRow[] {
+  return rows.filter((r) => r.depth === 0 || !collapsedParentIds.has(r.task.parent_id ?? ""));
+}
+
 export function subtaskProgress(children: Array<{ completed: boolean }>): {
   done: number;
   total: number;

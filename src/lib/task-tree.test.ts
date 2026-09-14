@@ -1,5 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import { flattenTaskTree, reorderSiblings, subtaskProgress, type FlatTaskRow } from "./task-tree";
+import {
+  flattenTaskTree,
+  reorderSiblings,
+  subtaskProgress,
+  visibleTaskRows,
+  type FlatTaskRow,
+} from "./task-tree";
 import type { RoomTask } from "@/lib/room";
 
 function task(overrides: Partial<RoomTask> & { id: string }): RoomTask {
@@ -60,6 +66,28 @@ describe("flattenTaskTree", () => {
     const rows = flattenTaskTree(tasks);
     expect(rows.map((r) => r.task.id)).toEqual(["orphan"]);
     expect(rows[0].depth).toBe(0);
+  });
+});
+
+describe("visibleTaskRows", () => {
+  const parent = task({ id: "parent", position: 0 });
+  const child1 = task({ id: "c1", parent_id: "parent", position: 0 });
+  const child2 = task({ id: "c2", parent_id: "parent", position: 1 });
+  const flat = task({ id: "flat", position: 1 });
+  const rows = flattenTaskTree([parent, child1, child2, flat]);
+
+  test("with nothing collapsed, every row is visible", () => {
+    expect(visibleTaskRows(rows, new Set())).toEqual(rows);
+  });
+
+  test("collapsing a parent hides only its own children", () => {
+    const visible = visibleTaskRows(rows, new Set(["parent"]));
+    expect(visible.map((r) => r.task.id)).toEqual(["parent", "flat"]);
+  });
+
+  test("collapsing an id with no children (or an unrelated id) changes nothing", () => {
+    expect(visibleTaskRows(rows, new Set(["flat"]))).toEqual(rows);
+    expect(visibleTaskRows(rows, new Set(["not-a-real-id"]))).toEqual(rows);
   });
 });
 
