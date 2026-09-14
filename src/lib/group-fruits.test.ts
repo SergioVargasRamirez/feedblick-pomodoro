@@ -31,6 +31,13 @@ describe("canToggleFruitEnabled", () => {
     const allButOne = ALL_IDS.slice(1);
     expect(canToggleFruitEnabled(allButOne, ALL_IDS[0])).toBe(false);
   });
+
+  test("with an explicit totalCount, applies against a custom-sized group set instead of the 8 fruits", () => {
+    // 3 custom groups, 2 already disabled — disabling the 3rd would leave zero.
+    expect(canToggleFruitEnabled(["a", "b"], "c", 3)).toBe(false);
+    // Same 2 disabled, but a larger custom set still has room.
+    expect(canToggleFruitEnabled(["a", "b"], "c", 5)).toBe(true);
+  });
 });
 
 describe("enabledFruitIds", () => {
@@ -42,5 +49,9 @@ describe("enabledFruitIds", () => {
     expect(enabledFruitIds(["banana", "cherry"])).toEqual(
       ALL_IDS.filter((id) => id !== "banana" && id !== "cherry"),
     );
+  });
+
+  test("with an explicit id list, filters that set instead of the 8 fruits", () => {
+    expect(enabledFruitIds(["a"], ["a", "b", "c"])).toEqual(["b", "c"]);
   });
 });

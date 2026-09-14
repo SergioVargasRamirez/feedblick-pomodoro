@@ -40,13 +40,23 @@ export function toggleDisabledFruit(disabledFruits: string[], fruitId: string): 
 
 // Guards against disabling the last remaining group — re-enabling is always allowed, but turning
 // off the only group still standing would leave nobody able to pick (or be auto-assigned) any
-// group at all.
-export function canToggleFruitEnabled(disabledFruits: string[], fruitId: string): boolean {
+// group at all. `totalCount` defaults to the fixed 8 fruits but takes an explicit value once a
+// host has a differently-sized custom group set (see host-groups.ts) — every existing call site
+// and test keeps working unmodified since the default preserves today's exact behavior.
+export function canToggleFruitEnabled(
+  disabledFruits: string[],
+  fruitId: string,
+  totalCount: number = GROUP_FRUITS.length,
+): boolean {
   if (disabledFruits.includes(fruitId)) return true;
-  const enabledCount = GROUP_FRUITS.length - disabledFruits.length;
+  const enabledCount = totalCount - disabledFruits.length;
   return enabledCount > 1;
 }
 
-export function enabledFruitIds(disabledFruits: string[]): string[] {
-  return GROUP_FRUITS.filter((f) => !disabledFruits.includes(f.id)).map((f) => f.id);
+// `allIds` defaults to the fixed 8 fruit ids, same reasoning as above.
+export function enabledFruitIds(
+  disabledFruits: string[],
+  allIds: string[] = GROUP_FRUITS.map((f) => f.id),
+): string[] {
+  return allIds.filter((id) => !disabledFruits.includes(id));
 }
