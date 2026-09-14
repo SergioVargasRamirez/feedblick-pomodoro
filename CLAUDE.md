@@ -606,3 +606,30 @@ TimerWheel.tsx` is the shared circular countdown widget (SVG ring draining from 
   skeleton. `TimerWheel`/`SignalMeter`/`CountBadge`/`FloatingQrPanel`'s drag behavior/
   `MinutesStepper` have no tests at all yet (mostly presentational, but the drag math and the
   stepper's clamping are real logic worth covering eventually).
+
+## Next steps (agreed 2026-09-14, none started yet)
+
+Closing note from the session that built the to-do-list feature set above (subtasks, DnD,
+markdown import, custom groups, the follow-up polish round, and the claim-lock fix) — three
+things queued up for whenever work resumes, in the order Sergio wants them tackled:
+
+1. **A full codebase review, including security** — everything so far has been verified
+   feature-by-feature as it landed (the live RLS/GRANT round trips noted throughout "What
+   exists" above), never as one pass across the whole app. Do this before any production
+   deploy, not after.
+2. **A possible rebrand: "Feedblick Swarm"** — under discussion in a separate conversation on
+   claude.ai (not this repo/session), aimed at repositioning the product to read as more
+   general-purpose and appealing to agile software teams (sprints, standups, swarming a
+   problem), not just classrooms. This goes further than the 2026-08-31 Host/Participant copy
+   rename (see "What this product is" above, which was explicitly copy-only) — a real name
+   change would touch the product's actual identity (BrandMark, favicon, legal docs' entity
+   name, domain), not just wording. **Not decided** — nothing here should be assumed or
+   implemented until that conversation concludes and Sergio brings back an actual decision.
+3. **Deploy to production Vercel + Supabase** — no production project exists yet for either;
+   everything to date has run against the local Supabase stack (563xx, see above) and `bun run
+   dev`. The legal pages (`/privacy`, `/impressum`) already assume Vercel Frankfurt
+   (eu-central-1) + Supabase EU (AWS eu-central-1) to match the edu/stars siblings — confirm
+   that's still the intended region before provisioning, and update those pages if the real
+   deployment ever differs. All migrations to date have only ever been applied to the local
+   stack; the production project will need every migration in `supabase/migrations/` run in
+   order from scratch.
