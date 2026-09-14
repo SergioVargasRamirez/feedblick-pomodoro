@@ -57,6 +57,7 @@ import { badgeColor } from "@/lib/badge-colors";
 import { canToggleFruitEnabled, enabledFruitIds, toggleDisabledFruit } from "@/lib/group-fruits";
 import { resolveGroupSet } from "@/lib/host-groups";
 import { addTag, removeTag } from "@/lib/room-tags";
+import { colorForLabel } from "@/lib/badge-colors";
 import { SIGNAL_LABEL } from "@/lib/signal-styles";
 import { cn } from "@/lib/utils";
 import { useRoom, useRoomTasks } from "@/hooks/use-room";
@@ -424,7 +425,10 @@ function RoomControl() {
                     {room.tags.map((tag) => (
                       <span
                         key={tag}
-                        className="flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground"
+                        className={cn(
+                          "flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium",
+                          colorForLabel(tag).idle,
+                        )}
                       >
                         {tag}
                         <button

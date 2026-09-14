@@ -35,6 +35,7 @@ import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
 import { checkIsAdmin } from "@/lib/admin.functions";
 import { allTags, filterRoomsByQuery, filterRoomsByTag } from "@/lib/room-tags";
+import { colorForLabel } from "@/lib/badge-colors";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -180,20 +181,21 @@ function Dashboard() {
             />
             {tags.length > 0 && (
               <div className="flex flex-wrap gap-1.5">
-                {tags.map((tag) => (
-                  <button
-                    key={tag}
-                    onClick={() => setActiveTag((prev) => (prev === tag ? null : tag))}
-                    className={cn(
-                      "rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
-                      activeTag === tag
-                        ? "border-primary bg-primary/10 text-primary"
-                        : "border-muted-foreground/30 text-muted-foreground hover:border-foreground hover:text-foreground",
-                    )}
-                  >
-                    {tag}
-                  </button>
-                ))}
+                {tags.map((tag) => {
+                  const color = colorForLabel(tag);
+                  return (
+                    <button
+                      key={tag}
+                      onClick={() => setActiveTag((prev) => (prev === tag ? null : tag))}
+                      className={cn(
+                        "rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
+                        activeTag === tag ? color.active : cn(color.idle, "hover:opacity-80"),
+                      )}
+                    >
+                      {tag}
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -224,7 +226,10 @@ function Dashboard() {
                       {room.tags.map((tag) => (
                         <span
                           key={tag}
-                          className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground"
+                          className={cn(
+                            "rounded-full border px-2 py-0.5 text-[11px] font-medium",
+                            colorForLabel(tag).idle,
+                          )}
                         >
                           {tag}
                         </span>

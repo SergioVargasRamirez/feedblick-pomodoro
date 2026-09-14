@@ -49,3 +49,16 @@ const PALETTE = [
 export function badgeColor(index: number) {
   return PALETTE[index % PALETTE.length];
 }
+
+// Same palette, keyed by a string instead of a fixed position — for labels with no stable
+// index of their own (room tags: a host's tag list differs per room, so "position in this
+// room's tags" would pick a different color for the same tag in two different rooms). A simple
+// string hash keeps one tag name landing on the same color everywhere it's shown, with no color
+// stored anywhere. Not cryptographic, just needs to spread labels across the palette.
+export function colorForLabel(label: string) {
+  let hash = 0;
+  for (let i = 0; i < label.length; i++) {
+    hash = (hash * 31 + label.charCodeAt(i)) | 0;
+  }
+  return badgeColor(Math.abs(hash) % PALETTE.length);
+}
