@@ -150,6 +150,7 @@ export type Database = {
           max_auto_restarts: number;
           name: string;
           status: string;
+          tags: string[];
           teacher_id: string;
           timer_duration_seconds: number | null;
           timer_phase: string;
@@ -170,6 +171,7 @@ export type Database = {
           max_auto_restarts?: number;
           name?: string;
           status?: string;
+          tags?: string[];
           teacher_id: string;
           timer_duration_seconds?: number | null;
           timer_phase?: string;
@@ -190,6 +192,7 @@ export type Database = {
           max_auto_restarts?: number;
           name?: string;
           status?: string;
+          tags?: string[];
           teacher_id?: string;
           timer_duration_seconds?: number | null;
           timer_phase?: string;

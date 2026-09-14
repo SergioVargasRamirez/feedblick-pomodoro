@@ -18,6 +18,8 @@ import {
   FastForward,
   Megaphone,
   Repeat,
+  Tag,
+  X,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { TimerWheel } from "@/components/TimerWheel";
@@ -49,10 +51,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { sessionUrl, type Room, type RoomTask } from "@/lib/room";
 import { badgeColor } from "@/lib/badge-colors";
 import { canToggleFruitEnabled, enabledFruitIds, toggleDisabledFruit } from "@/lib/group-fruits";
 import { resolveGroupSet } from "@/lib/host-groups";
+import { addTag, removeTag } from "@/lib/room-tags";
 import { SIGNAL_LABEL } from "@/lib/signal-styles";
 import { cn } from "@/lib/utils";
 import { useRoom, useRoomTasks } from "@/hooks/use-room";
@@ -114,6 +118,7 @@ function RoomControl() {
   const [announceText, setAnnounceText] = useState("");
   const [addingSubtaskFor, setAddingSubtaskFor] = useState<string | null>(null);
   const [subtaskText, setSubtaskText] = useState("");
+  const [newTag, setNewTag] = useState("");
 
   // Hooks must run unconditionally every render, so this runs against a fallback idle shape
   // before we know whether `room` has loaded yet — the loading-guard return below happens
@@ -272,6 +277,15 @@ function RoomControl() {
     updateRoom({ disabled_fruits: toggleDisabledFruit(room.disabled_fruits, groupId) });
   };
 
+  // Freeform tags for grouping/searching rooms on the dashboard — no tree/hierarchy, just a
+  // flat list of labels (room-tags.ts).
+  const onAddTag = () => {
+    const next = addTag(room.tags, newTag);
+    if (next !== room.tags) updateRoom({ tags: next });
+    setNewTag("");
+  };
+  const onRemoveTag = (tag: string) => updateRoom({ tags: removeTag(room.tags, tag) });
+
   const topLevelTasks = tasks.filter((t) => !t.parent_id);
 
   const onAddTask = async () => {
@@ -383,6 +397,61 @@ function RoomControl() {
               className="h-8 w-40 text-sm"
             />
             <span className="font-mono text-lg tracking-widest">{room.code}</span>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  aria-label="Edit tags"
+                  title={room.tags.length > 0 ? room.tags.join(", ") : "Add tags"}
+                  className="relative"
+                >
+                  <Tag className="size-4" />
+                  {room.tags.length > 0 && (
+                    <span className="absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground">
+                      {room.tags.length}
+                    </span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-64 space-y-2">
+                <p className="text-sm font-medium">Tags</p>
+                <p className="text-xs text-muted-foreground">
+                  Group or search for related rooms from the dashboard.
+                </p>
+                {room.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {room.tags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground"
+                      >
+                        {tag}
+                        <button
+                          onClick={() => onRemoveTag(tag)}
+                          aria-label={`Remove tag ${tag}`}
+                          className="hover:text-destructive"
+                        >
+                          <X className="size-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={newTag}
+                    onChange={(e) => setNewTag(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && onAddTag()}
+                    placeholder="Add a tag…"
+                    className="h-8"
+                  />
+                  <Button size="icon" variant="outline" className="size-8" onClick={onAddTag}>
+                    <Plus className="size-4" />
+                  </Button>
+                </div>
+              </PopoverContent>
+            </Popover>
             {room.status === "active" && (
               <Dialog open={announceOpen} onOpenChange={setAnnounceOpen}>
                 <DialogTrigger asChild>

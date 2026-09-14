@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,6 +34,8 @@ import type { Room } from "@/lib/room";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
 import { checkIsAdmin } from "@/lib/admin.functions";
+import { allTags, filterRoomsByQuery, filterRoomsByTag } from "@/lib/room-tags";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
@@ -63,6 +66,8 @@ function Dashboard() {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [search, setSearch] = useState("");
+  const [activeTag, setActiveTag] = useState<string | null>(null);
   const checkAdmin = useServerFn(checkIsAdmin);
   const { data: adminCheck } = useQuery({
     queryKey: ["admin", "check"],
@@ -104,6 +109,9 @@ function Dashboard() {
     if (error) toast.error(error.message);
     else setRooms((prev) => prev.filter((r) => r.id !== id));
   };
+
+  const tags = allTags(rooms);
+  const visibleRooms = filterRoomsByTag(filterRoomsByQuery(rooms, search), activeTag);
 
   return (
     <div className="relative isolate min-h-screen bg-background">
@@ -163,8 +171,40 @@ function Dashboard() {
           </Card>
         )}
 
+        {!loading && rooms.length > 0 && (
+          <div className="space-y-2">
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by name, code, or tag…"
+            />
+            {tags.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {tags.map((tag) => (
+                  <button
+                    key={tag}
+                    onClick={() => setActiveTag((prev) => (prev === tag ? null : tag))}
+                    className={cn(
+                      "rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
+                      activeTag === tag
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-muted-foreground/30 text-muted-foreground hover:border-foreground hover:text-foreground",
+                    )}
+                  >
+                    {tag}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {!loading && rooms.length > 0 && visibleRooms.length === 0 && (
+          <p className="text-sm text-muted-foreground">No rooms match.</p>
+        )}
+
         <div className="space-y-3">
-          {rooms.map((room) => (
+          {visibleRooms.map((room) => (
             <Card key={room.id} className="hover:border-primary transition-colors">
               <CardContent className="py-4 flex items-center justify-between gap-3">
                 <Link
@@ -179,6 +219,18 @@ function Dashboard() {
                   <p className="text-xs text-muted-foreground">
                     {new Date(room.created_at).toLocaleString()}
                   </p>
+                  {room.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1 pt-0.5">
+                      {room.tags.map((tag) => (
+                        <span
+                          key={tag}
+                          className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </Link>
                 <div className="flex shrink-0 items-center gap-3">
                   <span
