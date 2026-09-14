@@ -764,22 +764,39 @@ function RoomControl() {
               {groupOptions.map((group, i) => {
                 const isEnabled = !room.disabled_fruits.includes(group.id);
                 const color = badgeColor(i);
+                // Disabled reads as a plain click-to-restore pill (no "x" — nothing left to
+                // remove); enabled gets an explicit "x" so turning a group off doesn't require
+                // guessing that the whole pill is clickable.
+                if (!isEnabled) {
+                  return (
+                    <button
+                      key={group.id}
+                      onClick={() => onToggleFruitEnabled(group.id)}
+                      title="Click to bring this group back"
+                      className="rounded-full border border-muted-foreground/20 px-3.5 py-1.5 text-sm font-medium text-muted-foreground opacity-50 grayscale transition-colors hover:opacity-75"
+                    >
+                      {group.emoji && <span aria-hidden="true">{group.emoji}</span>} {group.label}
+                    </button>
+                  );
+                }
                 return (
-                  <button
+                  <span
                     key={group.id}
-                    onClick={() => onToggleFruitEnabled(group.id)}
-                    title={
-                      isEnabled ? "Click to remove this group" : "Click to bring this group back"
-                    }
                     className={cn(
-                      "rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors",
-                      isEnabled
-                        ? color.active
-                        : "border-muted-foreground/20 text-muted-foreground opacity-50 grayscale",
+                      "flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm font-medium",
+                      color.active,
                     )}
                   >
                     {group.emoji && <span aria-hidden="true">{group.emoji}</span>} {group.label}
-                  </button>
+                    <button
+                      onClick={() => onToggleFruitEnabled(group.id)}
+                      aria-label={`Remove group ${group.label}`}
+                      title="Remove this group"
+                      className="hover:opacity-70"
+                    >
+                      <X className="size-3.5" />
+                    </button>
+                  </span>
                 );
               })}
             </div>
